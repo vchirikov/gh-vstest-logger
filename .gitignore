@@ -1,0 +1,15 @@
+# Can contain personal info
+**/Properties/launchSettings.json
+*.suo
+*.user
+*.userosscache
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.*
+**/node_modules
+*.binlog
+.vs
+.idea
+artifacts
+tmp
+

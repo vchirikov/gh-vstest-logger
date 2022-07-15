@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
+    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
+    <!-- Include the PDB and xmldoc in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
+    <!-- CS1573: Parameter 'parameter' has no matching param tag in the XML comment for 'parameter' (but other parameters do) -->
+    <!-- CS1591: Missing XML comment for publicly visible type or member -->
+    <!-- CA1303: Method passes a literal string as parameter 'value' of a call -->
+    <NoWarn>$(NoWarn);RCS1047;CS1573;CS1591;CA1303;</NoWarn>
+    <!-- Include the PDB in the built .nupkg -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <IncludeSymbols>false</IncludeSymbols>
+    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
+    <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
+
+    <PackageReference Include="Nerdbank.GitVersioning" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Roslynator.Analyzers" />
+    <PackageReference Include="Meziantou.Analyzer" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+
+    <Using Include="System.Collections" />
+    <Using Include="System.Collections.Concurrent" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Diagnostics" />
+    <Using Include="System.Globalization" />
+    <Using Include="System.FormattableString" Static="True" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Runtime.CompilerServices" />
+    <Using Include="System.Runtime.InteropServices" />
+    <Using Include="System.Runtime.Serialization" />
+    <Using Include="System.Threading" />
+  </ItemGroup>
+  <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->
+  <ItemGroup Condition="'$(EnableSourceLink)' =='true'">
+    <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />
+  </ItemGroup>
+
+</Project>
+

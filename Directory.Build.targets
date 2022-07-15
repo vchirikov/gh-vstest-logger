@@ -1,0 +1,11 @@
+<Project>
+  <Sdk Name="Microsoft.Build.CentralPackageVersions" Version="2.1.3" />
+  <!-- Disable interaction with .git folder from Microsoft.Build.Tasks.Git -->
+  <Target Name="InitializeSourceControlInformationFromSourceControlManager" />
+  <Target Name="SetEmbeddedFilesFromSourceControlManagerUntrackedFiles" />
+  <!-- Disable NBGV cloud logic -->
+  <Target Name="GetBuildVersion_CloudBuildVersionVars" />
+  <Target Name="SetCloudBuildVersionVars" />
+  <Target Name="SetCloudBuildNumberWithVersion" />
+  <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.targets')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.targets" />
+</Project>

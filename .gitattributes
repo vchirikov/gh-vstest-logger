@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png binary
+*.jpeg binary
+*.jpg binary
+*.ico binary
+*.icon binary
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+*.sh text eol=lf
+*.cs diff=csharp text
