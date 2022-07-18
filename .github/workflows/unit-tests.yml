@@ -79,9 +79,10 @@ jobs:
 
       - name: dotnet test
         id: tests
+        # # out=$(dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:'github;name=unit-tests;GITHUB_TOKEN=$GITHUB_TOKEN' 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
         run: |
           exec 5>&1
-          out=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=$GITHUB_TOKEN" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
+          out=$(dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:'github;name=unit-tests;GITHUB_TOKEN=$GITHUB_TOKEN' 2>&1 | tee >(cat - >&5))
           out="${out//'%'/'%25'}"
           out="${out//$'\n'/'%0A'}"
           out="${out//$'\r'/'%0D'}"
@@ -93,8 +94,8 @@ jobs:
       - name: Report outputs
         if: ${{ always() }}
         run: |
-          echo "${{ steps.build.outputs.out }}"
           echo "${{ steps.tests.outputs.out }}"
+          echo "${{ steps.build.outputs.out }}"
 
       # <post-deploy-actions>
       - name: Report cancellation

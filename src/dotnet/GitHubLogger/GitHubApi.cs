@@ -19,14 +19,17 @@ internal sealed class GitHubApi
 
     public bool IsGitHubActions()
     {
-        using (var _ = Block("________Env variables__PROCESS________"))
+
+
+        var tmp = Environment.GetEnvironmentVariables();
+        using (var _ = Block($"________Env variables__PROCESS__ COUNT:__{tmp.Count}____"))
         {
-            var tmp = Environment.GetEnvironmentVariables();
             foreach (var env in tmp.Keys.Cast<string>().ToDictionary(kv => kv, kv => (string)tmp[kv], StringComparer.Ordinal))
             {
-                Debug($"{env.Key}={env.Value}");
+                Console.WriteLine($"{env.Key}={env.Value}");
             }
         }
+
         bool isCi = asBool(_params.CI);
         bool isGhActions = asBool(_params.GITHUB_ACTIONS);
 
