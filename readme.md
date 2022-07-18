@@ -2,7 +2,6 @@
 
 GitHub `dotnet test` logger without political shit.
 
-
 ## Conventions
 
 [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)

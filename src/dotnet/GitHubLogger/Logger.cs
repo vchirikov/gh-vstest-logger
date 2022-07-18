@@ -31,14 +31,20 @@ public class Logger : ITestLoggerWithParameters
     {
         _params = LoggerParameters.Create(parameters);
         _api = new GitHubApi(_params);
-        if (_api.IsGitHubActions())
+        if (!_api.IsGitHubActions())
         {
             Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
             return;
         }
-        if (string.IsNullOrWhiteSpace(_params.GITHUB_TOKEN))
+        if (string.IsNullOrEmpty(_params.GITHUB_TOKEN))
         {
             Warning("Can't see GITHUB_TOKEN env variable or parameter. Logger won't do anything.");
+            return;
+        }
+
+        if (_params.GITHUB_TOKEN.Length != 40)
+        {
+            Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
             return;
         }
 
@@ -49,7 +55,7 @@ public class Logger : ITestLoggerWithParameters
 
 
     /// <summary> Raised when a test run starts. </summary>
-    private void OnTestRunStart(TestRunCriteria testRunCriteria)
+    private void OnTestRunStart(TestRunCriteria _)
     {
         if (_status == TestRunStatus.Started)
         {
@@ -208,18 +214,16 @@ public class Logger : ITestLoggerWithParameters
     /// <summary> Raised when a test run is complete. </summary>
     private void OnTestRunComplete(TestRunCompleteEventArgs results)
     {
-        _ = Task.Run(async () => {
-            try
-            {
-                await OnTestRunCompleteInternalAsync(results).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Error($"Exception: {ex.Message}");
-                using var _ = Block("Exception info");
-                Error(ex.ToString());
-            }
-        });
+        try
+        {
+            OnTestRunCompleteInternalAsync(results).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Error($"Exception: {ex.Message}");
+            using var _ = Block("Exception info");
+            Error(ex.ToString());
+        }
 
         async Task OnTestRunCompleteInternalAsync(TestRunCompleteEventArgs results)
         {

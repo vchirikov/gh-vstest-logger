@@ -324,4 +324,5 @@ dotnet_diagnostic.CA5394.severity = none # CA5394: Random is an insecure random 
 dotnet_diagnostic.CA1303.severity = none # CA1303: Method passes a literal string as parameter 'value' of a call
 dotnet_diagnostic.CA2201.severity = none # CA2201: Exception type System.Exception is not sufficiently specific
 dotnet_diagnostic.MA0051.severity = none # MA0051: Method is too long
+dotnet_diagnostic.VSTHRD002.severity = none # VSTHRD002: Synchronously waiting on tasks or awaiters may cause deadlocks. Use await or JoinableTaskFactory.Run instead.
 dotnet_diagnostic.VSTHRD003.severity = none

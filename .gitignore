@@ -3,6 +3,7 @@
 *.suo
 *.user
 *.userosscache
+**/TestResults
 _ReSharper*/
 *.[Rr]e[Ss]harper
 *.DotSettings.*

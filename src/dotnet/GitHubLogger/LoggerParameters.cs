@@ -9,11 +9,12 @@ internal record class LoggerParameters
 {
     private LoggerParameters() { }
 
-    internal static LoggerParameters Create(Dictionary<string, string>? parameters = null, Func<string, string>? envReader = null)
+    internal static LoggerParameters Create(Dictionary<string, string>? parameters = null, Func<string, string?>? envReader = null)
     {
         var obj = new LoggerParameters();
-        envReader ??= static (string variable) => Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.Process);
+        envReader ??= static (string variable) => Environment.GetEnvironmentVariable(variable);
         TypedReference tr = __makeref(obj);
+        var fields = typeof(LoggerParameters).GetFields(BindingFlags.Public | BindingFlags.Instance);
         foreach (var fi in typeof(LoggerParameters).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             if (parameters?.TryGetValue(fi.Name, out string fieldValue) != true)

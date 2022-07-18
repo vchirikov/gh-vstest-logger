@@ -1,0 +1,208 @@
+name: Unit-tests
+concurrency:
+  group: deployment-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+permissions: write-all
+defaults:
+  run:
+    shell: bash
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+env:
+  DOCKER_BUILDKIT: 1
+  DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: "true"
+  DOTNET_CLI_UI_LANGUAGE: en-US
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SVCUTIL_TELEMETRY_OPTOUT: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_ROLL_FORWARD: Major
+  DOTNET_ROLL_FORWARD_TO_PRERELEASE: 1
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+  POWERSHELL_UPDATECHECK_OPTOUT: 1
+jobs:
+  unit-tests:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov') }}
+    environment: job
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save default env variables
+        run: |
+          env > $GITHUB_ENV
+
+      - name: git checkout
+        uses: actions/checkout@v2
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+
+      - name: Print version
+        run: |
+          echo "::debug::SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
+
+      - name: Report running
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ℹ️ Run unit-tests... `༼ つ ◕_◕ ༽つ`
+
+      - name: NuGet cache restore
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: dotnet build
+        id: build
+        shell: bash --noprofile --norc {0}
+        run: |
+          exec 5>&1
+          out=$(dotnet build -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
+          exit_code=$?
+          out="${out//'%'/'%25'}"
+          out="${out//$'\n'/'%0A'}"
+          out="${out//$'\r'/'%0D'}"
+          echo "::set-output name=out::$out"
+          exec 5>&-
+          exit $exit_code
+
+      - name: dotnet test
+        id: tests
+        shell: bash --noprofile --norc {0}
+        run: |
+          exec 5>&1
+          out=$(dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' ; exit ${PIPESTATUS[0]} )
+          exit_code=$?
+          out="${out//'%'/'%25'}"
+          out="${out//$'\n'/'%0A'}"
+          out="${out//$'\r'/'%0D'}"
+          echo "::set-output name=out::$out"
+          exec 5>&-
+          exit $exit_code
+
+      # <post-deploy-actions>
+
+      - name: Report tests success
+        if: ${{ steps.tests.outcome == 'success' &&  steps.tests.outputs.conclusion == 'Success'}}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
+            ${{ steps.tests.outputs.summary }}
+            `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
+
+      - name: Report tests failed
+        if: ${{ failure() && steps.tests.outcome == 'failure' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
+            ${{ steps.tests.outputs.summary }}
+
+            <details open> <summary> Tests output </summary>
+
+            ```diff
+            ${{ steps.tests.outputs.out }}
+            ```
+
+            </details>
+
+      - name: Report cancellation
+        if: ${{ cancelled() || steps.tests.outputs.conclusion == 'Cancelled' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ⚠️ Test run cancelled. `(ง •_•)ง`
+
+      - name: Report dotnet build failure
+        if: ${{ failure() && steps.build.outcome == 'failure'}}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ❌ Build failed  `(╯°□°)╯︵ ┻━┻`
+
+            <details open> <summary> dotnet build output </summary>
+
+            ```diff
+            ${{ steps.build.outputs.out }}
+            ```
+
+            </details>
+
+      - name: Report failure
+        if: ${{ failure() && steps.tests.outcome != 'failure' && steps.build.outcome != 'failure'}}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          allow-repeats: true
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            ❌ Failed. `( ˘︹˘ )`
+
+      # - name: Create tag
+      #   if: ${{ github.event_name == 'workflow_dispatch' }}
+      #   uses: actions/github-script@v5
+      #   with:
+      #     github-token: "${{ secrets.GITHUB_TOKEN }}"
+      #     script: |
+      #       github.rest.git.createRef({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         ref: "refs/tags/${{ steps.nbgv.outputs.SemVer2 }}",
+      #         sha: context.sha
+      #       })
+
+      # - name: Setup git-chglog
+      #   if: ${{ github.event_name == 'workflow_dispatch' }}
+      #   working-directory: /tmp
+      #   run: |
+      #     wget https://github.com/git-chglog/git-chglog/releases/download/v${VERSION}/git-chglog_${VERSION}_linux_amd64.tar.gz
+      #     tar -xvf git-chglog_${VERSION}_linux_amd64.tar.gz
+      #     sudo mv git-chglog /usr/local/bin/
+      #   env:
+      #     VERSION: "0.15.1"
+
+      # - name: Generate changelog
+      #   if: ${{ github.event_name == 'workflow_dispatch' }}
+      #   id: changelog
+      #   run: |
+      #     echo "Creating change log for tag: ${{ steps.nbgv.outputs.SemVer2 }}"
+      #     git tag ${{ steps.nbgv.outputs.SemVer2 }}
+      #     REPORT=$(git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }} | tee)
+      #     REPORT="${REPORT//'%'/'%25'}"
+      #     REPORT="${REPORT//$'\n'/'%0A'}"
+      #     REPORT="${REPORT//$'\r'/'%0D'}"
+      #     echo "::set-output name=out::$REPORT"
+
+      # - name: Create Release
+      #   if: ${{ github.event_name == 'workflow_dispatch' }}
+      #   uses: actions/create-release@v1.1.4
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     prerelease: ${{ steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen != '' }}
+      #     tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
+      #     release_name: ${{ steps.nbgv.outputs.SemVer2 }}
+      #     body: ${{ steps.changelog.outputs.out }}
+      #</post-deploy-actions>

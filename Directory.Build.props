@@ -28,6 +28,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode>false</RestoreLockedMode>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
     <!-- NU5048: The 'PackageIconUrl'/'iconUrl' element is deprecated -->
     <!-- MA0048: File name must match type name -->

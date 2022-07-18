@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace GitHubLogger.UnitTests;
+namespace TestPlatform.Extension.GitHubLogger.UnitTests;
 
 public class ExampleTests
 {
@@ -21,4 +21,11 @@ public class ExampleTests
         Assert.True(true);
     }
 
+    // [Fact]
+    // public void AlwaysFail()
+    // {
+    //     _logger.LogError("AlwaysFail() err msg from the MS Logger");
+    //     _helper.WriteLine("AlwaysFail() msg from xunit MS Logger");
+    //     Assert.False(true);
+    // }
 }
