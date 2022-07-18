@@ -235,37 +235,28 @@ public class Logger : ITestLoggerWithParameters
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
                 var sb = new StringBuilder(1024);
                 if (results.TestRunStatistics.Stats.Any(stat => stat.Key == TestOutcome.Failed && stat.Value > 0))
-                {
                     conclusion = CheckConclusion.Failure;
-                    sb.AppendLine(":red_circle: Test run is failed.");
-                }
                 else
-                {
                     conclusion = CheckConclusion.Success;
-                    sb.AppendLine(":green_circle: Test run is successful.");
-                }
 
                 if (results.IsAborted || results.IsCanceled)
-                {
                     conclusion = CheckConclusion.Cancelled;
-                    sb.AppendLine(":green_circle: Test run is cancelled.");
-                }
 
-                sb.Append("Total tests: ").Append(results.TestRunStatistics.ExecutedTests).AppendLine();
+                sb.Append("**Total tests**: ").Append(results.TestRunStatistics.ExecutedTests).AppendLine("  ");
 
                 foreach (var stat in results.TestRunStatistics.Stats)
                 {
-                    sb.Append(" - ").Append(stat.Key switch {
+                    sb.Append(stat.Key switch {
                         TestOutcome.None => ":question:",
-                        TestOutcome.Passed => ":heavy_check_mark:",
-                        TestOutcome.Failed => ":heavy_multiplication_x:",
-                        TestOutcome.Skipped => ":large_orange_diamond:",
+                        TestOutcome.Passed => ":white_check_mark:",
+                        TestOutcome.Failed => ":x:",
+                        TestOutcome.Skipped => ":brown_circle:",
                         TestOutcome.NotFound => ":skull_and_crossbones:",
                         _ => ":skull:"
-                    }).Append(' ').Append(stat.Key).Append(": ").Append(stat.Value).AppendLine();
+                    }).Append(" **").Append(stat.Key).Append("**: ").Append(stat.Value).AppendLine();
                 }
                 sb.AppendLine();
-                sb.Append("Total time: ").AppendLine(FormatTimeSpan(results.ElapsedTimeInRunningTests));
+                sb.Append("⌚ **Total time**: ").AppendLine(FormatTimeSpan(results.ElapsedTimeInRunningTests));
                 summary = sb.ToString();
                 var update = new CheckRunUpdate() {
                     Output = new NewCheckRunOutput(_params.name, summary),

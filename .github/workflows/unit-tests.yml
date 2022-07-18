@@ -40,6 +40,10 @@ jobs:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
 
+      - name: Checkout Pull Request
+        if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') }}
+        run: gh pr checkout ${{ github.event.issue.number }}
+
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
@@ -56,7 +60,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allow-repeats: true
           message: |
-            ℹ️ Run unit-tests... `༼ つ ◕_◕ ༽つ`
+            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
 
       - name: NuGet cache restore
         uses: actions/cache@v3
@@ -104,7 +108,9 @@ jobs:
           allow-repeats: true
           message: |
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
+
             ${{ steps.tests.outputs.summary }}
+
             `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
 
       - name: Report tests failed
@@ -115,6 +121,7 @@ jobs:
           allow-repeats: true
           message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
+
             ${{ steps.tests.outputs.summary }}
 
             <details open> <summary> Tests output </summary>
