@@ -12,7 +12,7 @@ internal record class LoggerParameters
     internal static LoggerParameters Create(Dictionary<string, string>? parameters = null, Func<string, string>? envReader = null)
     {
         var obj = new LoggerParameters();
-        envReader ??= static (string variable) => Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.Process);
+        envReader ??= static (string variable) => Environment.GetEnvironmentVariable(variable);
         TypedReference tr = __makeref(obj);
         foreach (var fi in typeof(LoggerParameters).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {

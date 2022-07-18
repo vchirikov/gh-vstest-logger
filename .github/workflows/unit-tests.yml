@@ -26,6 +26,7 @@ env:
 jobs:
   unit-tests:
     if: ${{ contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov' }}
+    environment: job
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
@@ -82,12 +83,14 @@ jobs:
           echo "current variables:"
           env
           exec 5>&1
-          OUTPUT=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
+          OUTPUT=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=$GITHUB_TOKEN" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
           OUTPUT="${OUTPUT//'%'/'%25'}"
           OUTPUT="${OUTPUT//$'\n'/'%0A'}"
           OUTPUT="${OUTPUT//$'\r'/'%0D'}"
           echo "::set-output name=text::$OUTPUT"
           exec 5>&-
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report outputs
         if: ${{ always() }}
