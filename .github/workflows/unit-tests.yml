@@ -69,7 +69,7 @@ jobs:
         id: build
         run: |
           exec 5>&1
-          out=$(dotnet build -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' )
+          out=$(dotnet build -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g')
           out="${out//'%'/'%25'}"
           out="${out//$'\n'/'%0A'}"
           out="${out//$'\r'/'%0D'}"
@@ -79,14 +79,21 @@ jobs:
       - name: dotnet test
         id: tests
         run: |
+          echo "current variables:"
           env
           exec 5>&1
-          out=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
-          out="${out//'%'/'%25'}"
-          out="${out//$'\n'/'%0A'}"
-          out="${out//$'\r'/'%0D'}"
-          echo "::set-output name=out::$out"
+          OUTPUT=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
+          OUTPUT="${OUTPUT//'%'/'%25'}"
+          OUTPUT="${OUTPUT//$'\n'/'%0A'}"
+          OUTPUT="${OUTPUT//$'\r'/'%0D'}"
+          echo "::set-output name=text::$OUTPUT"
           exec 5>&-
+
+      - name: Report outputs
+        if: ${{ always() }}
+        run: |
+          echo "${{ steps.build.outputs.out }}"
+          echo "${{ steps.tests.outputs.text }}"
 
       # <post-deploy-actions>
       - name: Report cancellation
@@ -126,7 +133,7 @@ jobs:
             <details open> <summary> dotnet test output </summary>
 
             ```diff
-            ${{ steps.tests.outputs.out }}
+            ${{ steps.tests.outputs.text }}
             ```
 
             </details>
