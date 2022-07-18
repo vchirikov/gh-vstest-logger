@@ -24,7 +24,7 @@ jobs:
           EVENT_CONTEXT: ${{ toJSON(github.event) }}
   ################
   unit-tests:
-    if: ${{ contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-tests') && github.event.sender.login == "vchirikov" }}
+    if: ${{ contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov' }}
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
