@@ -12,10 +12,13 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.TestPlatform.ObjectModel" />
     <PackageReference Include="Octokit" />
+    <PackageReference Include="StackTraceParser.Source" />
     <!-- For compability with pre C# 9.0 era (netcoreapp3.1 and lower)-->
     <PackageReference Include="IsExternalInit" />
   </ItemGroup>
-  <ItemGroup>
-    <AdditionalThisAssemblyFields Include="ApiVersion" String="v1" EmitIfEmpty="true" />
-  </ItemGroup>
+  <Target Name="AddAdditionalFieldsToThisAssembly" DependsOnTargets="GetBuildVersion" BeforeTargets="GenerateAssemblyNBGVVersionInfo">
+    <ItemGroup>
+      <AdditionalThisAssemblyFields Include="ApiVersion" String="v$(VersionMajor)" EmitIfEmpty="true"/>
+    </ItemGroup>
+  </Target>
 </Project>
