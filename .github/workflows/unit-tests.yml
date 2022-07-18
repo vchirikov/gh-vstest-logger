@@ -13,17 +13,6 @@ on:
 env:
   DOCKER_BUILDKIT: 1
 jobs:
-  ###############
-  dbg:
-    name: Dbg
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print event context
-        run: |
-          echo $EVENT_CONTEXT
-        env:
-          EVENT_CONTEXT: ${{ toJSON(github.event) }}
-  ################
   unit-tests:
     if: ${{ contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov' }}
     name: Unit tests
@@ -62,20 +51,24 @@ jobs:
       - name: dotnet build
         id: build
         run: |
-          OUTPUT=$(dotnet build -c Debug| tee | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g')
-          OUTPUT="${OUTPUT//'%'/'%25'}"
-          OUTPUT="${OUTPUT//$'\n'/'%0A'}"
-          OUTPUT="${OUTPUT//$'\r'/'%0D'}"
-          echo "::set-output name=stdout::$OUTPUT"
+          exec 5>&1
+          out=$(dotnet build -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' )
+          out="${out//'%'/'%25'}"
+          out="${out//$'\n'/'%0A'}"
+          out="${out//$'\r'/'%0D'}"
+          echo "::set-output name=out::$out"
+          exec 5>&-
 
       - name: dotnet test
         id: tests
         run: |
-          OUTPUT=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" | tee | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g')
-          OUTPUT="${OUTPUT//'%'/'%25'}"
-          OUTPUT="${OUTPUT//$'\n'/'%0A'}"
-          OUTPUT="${OUTPUT//$'\r'/'%0D'}"
-          echo "::set-output name=stdout::$OUTPUT"
+          exec 5>&1
+          out=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
+          out="${out//'%'/'%25'}"
+          out="${out//$'\n'/'%0A'}"
+          out="${out//$'\r'/'%0D'}"
+          echo "::set-output name=out::$out"
+          exec 5>&-
 
       # <post-deploy-actions>
       - name: Report cancellation
@@ -94,10 +87,10 @@ jobs:
           message: |
             ❌ Build failed  `(╯°□°)╯︵ ┻━┻`
 
-            <details open> <summary>`dotnet build` output</summary>
+            <details open> <summary> dotnet build output </summary>
 
             ```diff
-            ${{ steps.build.outputs.stdout }}
+            ${{ steps.build.outputs.out }}
             ```
 
             </details>
@@ -109,10 +102,10 @@ jobs:
           message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
-            <details open> <summary>`dotnet test` output</summary>
+            <details open> <summary> dotnet test output </summary>
 
             ```diff
-            ${{ steps.tests.outputs.stdout }}
+            ${{ steps.tests.outputs.out }}
             ```
 
             </details>
@@ -166,7 +159,7 @@ jobs:
       #     REPORT="${REPORT//'%'/'%25'}"
       #     REPORT="${REPORT//$'\n'/'%0A'}"
       #     REPORT="${REPORT//$'\r'/'%0D'}"
-      #     echo "::set-output name=stdout::$REPORT"
+      #     echo "::set-output name=out::$REPORT"
 
       # - name: Create Release
       #   if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -177,5 +170,5 @@ jobs:
       #     prerelease: ${{ steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen != '' }}
       #     tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
       #     release_name: ${{ steps.nbgv.outputs.SemVer2 }}
-      #     body: ${{ steps.changelog.outputs.stdout }}
+      #     body: ${{ steps.changelog.outputs.out }}
       #</post-deploy-actions>
