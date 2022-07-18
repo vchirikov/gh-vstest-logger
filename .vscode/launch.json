@@ -5,6 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        },
+        {
             "name": "Run dotnet test with logger",
             "type": "coreclr",
             "request": "launch",
@@ -18,7 +23,8 @@
             "args": [
                 "test",
                 "--logger",
-                "\"TestPlatform.Extensions.GitHubLogger\""
+                // "\"github;name=unit-tests;GITHUB_TOKEN=\""
+                "\"github;name=unit-tests\""
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

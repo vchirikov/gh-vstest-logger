@@ -1,0 +1,44 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/vchirikov/gh-vstest-logger
+options:
+  tag_filter_pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+.*"
+  sort: "semver"
+  commits:
+    filters:
+      Type:
+        - feat
+        - fix
+        - perf
+        - refactor
+        - ci
+        - docs
+    sort_by: Scope
+  commit_groups:
+    title_maps:
+      feat: Features
+      fix: Bug Fixes
+      perf: Performance Improvements
+      refactor: Refactoring
+      ci: CI/CD
+      docs: Documentation
+  header:
+    pattern: "^(\\w*)(?:\\(([\\w\\$\\.\\-\\*\\s]*)\\))?\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
+
+  issues:
+    prefix:
+      - "#"
+
+  refs:
+    actions:
+      - Closes
+      - Fixes

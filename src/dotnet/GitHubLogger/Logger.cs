@@ -49,7 +49,7 @@ public class Logger : ITestLoggerWithParameters
 
 
     /// <summary> Raised when a test run starts. </summary>
-    private void OnTestRunStart(TestRunCriteria testRunCriteria)
+    private void OnTestRunStart(TestRunCriteria _)
     {
         if (_status == TestRunStatus.Started)
         {
