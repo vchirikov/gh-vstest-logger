@@ -21,11 +21,11 @@ public class ExampleTests
         Assert.True(true);
     }
 
-    // [Fact]
-    // public void AlwaysFail()
-    // {
-    //     _logger.LogError("AlwaysFail() err msg from the MS Logger");
-    //     _helper.WriteLine("AlwaysFail() msg from xunit MS Logger");
-    //     Assert.False(true);
-    // }
+    [Fact]
+    public void AlwaysFail()
+    {
+        _logger.LogError("AlwaysFail() err msg from the MS Logger");
+        _helper.WriteLine("AlwaysFail() msg from xunit MS Logger");
+        Assert.False(true);
+    }
 }
