@@ -12,13 +12,29 @@ on:
     types: [created]
 env:
   DOCKER_BUILDKIT: 1
+  DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: "true"
+  DOTNET_CLI_UI_LANGUAGE: en-US
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SVCUTIL_TELEMETRY_OPTOUT: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_ROLL_FORWARD: Major
+  DOTNET_ROLL_FORWARD_TO_PRERELEASE: 1
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+  POWERSHELL_UPDATECHECK_OPTOUT: 1
 jobs:
   unit-tests:
     if: ${{ contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov' }}
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Save default env variables
+        run: |
+          env > $GITHUB_ENV
+
+      - name: git checkout
+        uses: actions/checkout@v2
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
@@ -37,6 +53,7 @@ jobs:
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
           message: |
             ℹ️ Run unit-tests... `༼ つ ◕_◕ ༽つ`
 
@@ -62,6 +79,7 @@ jobs:
       - name: dotnet test
         id: tests
         run: |
+          env
           exec 5>&1
           out=$(dotnet test --nologo --no-build --filter "FullyQualifiedName~UnitTests" --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g')
           out="${out//'%'/'%25'}"
@@ -76,6 +94,7 @@ jobs:
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
           message: |
             ⚠️ Deployment cancelled. `(ง •_•)ง`
 
@@ -84,6 +103,7 @@ jobs:
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
           message: |
             ❌ Build failed  `(╯°□°)╯︵ ┻━┻`
 
@@ -99,6 +119,7 @@ jobs:
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
           message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
@@ -114,6 +135,7 @@ jobs:
         if: ${{ failure() && steps.tests.outcome != 'failure' && steps.build.outcome != 'failure'}}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
+          allow-repeats: true
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ❌ Failed. `( ˘︹˘ )`
@@ -122,6 +144,7 @@ jobs:
         if: ${{ success() }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
+          allow-repeats: true
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful! `(•_•)     ( •_•)>⌐■-■     (⌐■_■)`
