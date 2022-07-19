@@ -7,13 +7,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D4B7FB40
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "tests\Testing\Testing.csproj", "{F6E53126-288B-4F93-B881-2819CC50D536}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHubLogger.UnitTests", "tests\GitHubLogger.UnitTests\GitHubLogger.UnitTests.csproj", "{F0DC8DD6-F44F-4229-96D9-3A48A8BDD8EE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger.UnitTests", "tests\Logger.UnitTests\Logger.UnitTests.csproj", "{F0DC8DD6-F44F-4229-96D9-3A48A8BDD8EE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{33AECDEA-3911-406C-8862-0AEB5E559C4B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{656D6C5C-DE8F-4291-A951-EFB9B8267415}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHubLogger", "src\dotnet\GitHubLogger\GitHubLogger.csproj", "{B1112909-A8E1-4FB2-8E1B-83A489F9F8BC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger", "src\dotnet\Logger\Logger.csproj", "{B1112909-A8E1-4FB2-8E1B-83A489F9F8BC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\GitHubLogger\GitHubLogger.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Logger\Logger.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 </Project>
