@@ -1461,7 +1461,7 @@
           "xunit.extensibility.core": "[2.4.2-pre.12]"
         }
       },
-      "TestPlatform.Extensions.GitHubLogger": {
+      "TestPlatform.GitHubLogger": {
         "type": "Project",
         "dependencies": {
           "IsExternalInit": "1.0.3",
@@ -1470,7 +1470,7 @@
           "StackTraceParser.Source": "1.3.1"
         }
       },
-      "TestPlatform.Extensions.Testing": {
+      "TestPlatform.Testing": {
         "type": "Project",
         "dependencies": {
           "FluentAssertions": "6.7.0",
