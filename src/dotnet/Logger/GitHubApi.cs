@@ -1,6 +1,6 @@
 using Octokit;
 
-namespace TestPlatform.Extension.GitHubLogger;
+namespace GitHub.VsTest.Logger;
 
 /// <summary> Leaky abstraction ( ˘︹˘ ), but good enough for now. </summary>
 internal sealed class GitHubApi

@@ -1,4 +1,4 @@
-namespace TestPlatform.Extension.GitHubLogger.UnitTests;
+namespace GitHub.VsTest.Logger.UnitTests;
 
 public class GitHubLoggerTests
 {

@@ -1,16 +1,15 @@
 using System.Text;
+using GitHub.VsTest.Logger;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using Octokit;
-using TestPlatform.GitHubLogger;
+using static GitHub.VsTest.Logger.GitHubApi;
 
-using static TestPlatform.Extension.GitHubLogger.GitHubApi;
-
-namespace TestPlatform.Extension.GitHubLogger;
+namespace GitHub.VsTest.Logger;
 
 [FriendlyName(FriendlyName)]
 [ExtensionUri(ExtensionUri)]
-public class Logger : ITestLoggerWithParameters
+public class GitHubLogger : ITestLoggerWithParameters
 {
     /// <summary> Uri used to uniquely identify the logger </summary>
     public const string ExtensionUri = $"logger://vchirikov/gh-vstest-logger/{ThisAssembly.ApiVersion}";

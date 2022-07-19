@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 
-namespace TestPlatform.Testing;
+namespace GitHub.VsTest.Testing;
 
 public class StartupBase
 {
