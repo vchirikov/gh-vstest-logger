@@ -2,7 +2,7 @@
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props" />
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <RepoName>TestPlatform.Extensions</RepoName>
+    <RepoName>TestPlatform</RepoName>
     <AssemblyName>$(RepoName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(RepoName).$(MSBuildProjectName)</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
