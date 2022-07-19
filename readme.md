@@ -31,7 +31,7 @@ Because technologies must be shared without the idiotic crap in their licenses.
 ## Usage:
 
 ```xml
-<PackageReference Include="TestPlatform.Extensions.GitHubLogger" Version="*-*" />
+<PackageReference Include="TestPlatform.GitHubLogger" Version="*-*" />
 ```
 
 
