@@ -68,13 +68,13 @@ jobs:
           echo "::debug::SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
 
       - name: Verify the public branch name matches version.json
-        if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == true && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}
+        if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}
         run: |
           echo "::error::The branch name ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
 
       - name: Verify that non-public branch has a prerelease suffix in version.json
-        if: ${{ steps.nbgv.outputs.PublicRelease == false && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'False' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         run: |
           echo "::error::The non-public branch ${{ github.ref }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
@@ -270,7 +270,7 @@ jobs:
             ❌ Failed. `( ˘︹˘ )`
 
       - name: Create tag
-        if: ${{ steps.nbgv.outputs.PublicRelease == true }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         uses: actions/github-script@v5
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -283,7 +283,7 @@ jobs:
             })
 
       - name: Setup git-chglog
-        if: ${{ steps.nbgv.outputs.PublicRelease == true }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         working-directory: /tmp
         run: |
           wget https://github.com/git-chglog/git-chglog/releases/download/v${VERSION}/git-chglog_${VERSION}_linux_amd64.tar.gz
@@ -293,7 +293,7 @@ jobs:
           VERSION: "0.15.1"
 
       - name: Generate changelog
-        if: ${{ steps.nbgv.outputs.PublicRelease == true }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         id: changelog
         shell: bash --noprofile --norc {0}
         run: |
@@ -309,7 +309,7 @@ jobs:
           exit $exit_code
 
       - name: Create Release
-        if: ${{ steps.nbgv.outputs.PublicRelease == true }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

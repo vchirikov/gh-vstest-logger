@@ -2,7 +2,7 @@ using System.Text;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using Octokit;
-using TestPlatform.Extensions.GitHubLogger;
+using TestPlatform.GitHubLogger;
 
 using static TestPlatform.Extension.GitHubLogger.GitHubApi;
 
