@@ -12,14 +12,14 @@ dotnet test --logger "github;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
 
 Because technologies must be shared without the idiotic crap in their licenses.  
 
-![IT commune](img/docs/img/bunny.png)
+![IT commune](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/bunny.png)
 
 
 ## Screenshots
 
-![Example of a summary](img/docs/img/test-ci-workflow.png)  
+![Example of a summary](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/test-ci-workflow.png)  
 
-![Example of PR comment](img/docs/img/pr-comment.png)
+![Example of PR comment](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment.png)
 
 
 > **Warning**
