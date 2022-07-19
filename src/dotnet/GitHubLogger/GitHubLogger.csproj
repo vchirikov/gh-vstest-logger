@@ -16,7 +16,7 @@
     <!-- For compability with pre C# 9.0 era (netcoreapp3.1 and lower)-->
     <PackageReference Include="IsExternalInit" />
 
-    <InternalsVisibleTo Include="$(PackageName).UnitTests" />
+    <InternalsVisibleTo Include="$(PackageId).UnitTests" />
   </ItemGroup>
   <Target Name="AddAdditionalFieldsToThisAssembly" DependsOnTargets="GetBuildVersion" BeforeTargets="GenerateAssemblyNBGVVersionInfo">
     <ItemGroup>
