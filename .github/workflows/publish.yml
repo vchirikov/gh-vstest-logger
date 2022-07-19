@@ -271,7 +271,7 @@ jobs:
 
       - name: Create tag
         if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           script: |
@@ -298,6 +298,7 @@ jobs:
         shell: bash --noprofile --norc {0}
         run: |
           echo "Creating change log for tag: ${{ steps.nbgv.outputs.SemVer2 }}"
+          git tag ${{ steps.nbgv.outputs.SemVer2 }}
           exec 5>&1
           out=$(git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }} 2>&1 | tee >(cat - >&5) ; exit ${PIPESTATUS[0]} )
           exit_code=$?
