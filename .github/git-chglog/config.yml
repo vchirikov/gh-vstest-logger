@@ -15,6 +15,7 @@ options:
         - refactor
         - ci
         - docs
+        - build
     sort_by: Scope
   commit_groups:
     title_maps:
@@ -23,6 +24,7 @@ options:
       perf: Performance Improvements
       refactor: Refactoring
       ci: CI/CD
+      build: Build Improvements
       docs: Documentation
   header:
     pattern: "^(\\w*)(?:\\(([\\w\\$\\.\\-\\*\\s]*)\\))?\\:\\s(.*)$"
@@ -37,7 +39,6 @@ options:
   issues:
     prefix:
       - "#"
-
   refs:
     actions:
       - Closes

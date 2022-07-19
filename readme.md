@@ -1,6 +1,53 @@
 # GitHub Actions adapter for Microsoft.TestPlatform
 
-GitHub `dotnet test` logger without political shit.
+GitHub `dotnet test` logger without political shit.  
+
+## TLDR 
+
+```bash
+dotnet test --logger "github;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+```
+
+## Why?
+
+Because technologies must be shared without the idiotic crap in their licenses.  
+
+![IT commune](img/docs/img/bunny.png)
+
+
+## Screenshots
+
+![Example of a summary](img/docs/img/test-ci-workflow.png)  
+
+![Example of PR comment](img/docs/img/pr-comment.png)
+
+
+> **Warning**
+> The logger is supposed to **be used from within a GitHub Workflow**,
+> since it requires several variables to work (because it uses GitHub Api), 
+> and although you can provide them via logger parameters, **this is not recommended**.
+
+
+## Usage:
+
+```xml
+<PackageReference Include="TestPlatform.Extensions.GitHubLogger" Version="*-*" />
+```
+
+
+```bash
+dotnet test --logger "github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}"
+```
+
+Parameters can be set with the command line args, or through environment variables.  
+
+We took all default variables from default github actions [environment variables](https://docs.github.com/en/actions/learn-github-actions/environment-variables)
+and add `name` & `GITHUB_TOKEN`. All parameters are defined [here](./src/dotnet/GitHubLogger/LoggerParameters.cs).  
+
+After test run the logger produce 2 GitHub Workflow step variables: `conclusion` and `summary`, you can use them in your workflow.  
+
+You can also view [how we use it in our workflows](./.github/workflows/unit-tests.yml).
+
 
 ## Conventions
 

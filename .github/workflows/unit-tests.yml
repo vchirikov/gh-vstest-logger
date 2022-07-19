@@ -1,6 +1,6 @@
 name: Unit-tests
 concurrency:
-  group: deployment-${{ github.ref }}-${{ github.event_name }}
+  group: tests-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 permissions: write-all
 defaults:
@@ -26,7 +26,6 @@ env:
 jobs:
   unit-tests:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov') }}
-    environment: job
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
@@ -168,50 +167,4 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ❌ Failed. `( ˘︹˘ )`
-
-      # - name: Create tag
-      #   if: ${{ github.event_name == 'workflow_dispatch' }}
-      #   uses: actions/github-script@v5
-      #   with:
-      #     github-token: "${{ secrets.GITHUB_TOKEN }}"
-      #     script: |
-      #       github.rest.git.createRef({
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         ref: "refs/tags/${{ steps.nbgv.outputs.SemVer2 }}",
-      #         sha: context.sha
-      #       })
-
-      # - name: Setup git-chglog
-      #   if: ${{ github.event_name == 'workflow_dispatch' }}
-      #   working-directory: /tmp
-      #   run: |
-      #     wget https://github.com/git-chglog/git-chglog/releases/download/v${VERSION}/git-chglog_${VERSION}_linux_amd64.tar.gz
-      #     tar -xvf git-chglog_${VERSION}_linux_amd64.tar.gz
-      #     sudo mv git-chglog /usr/local/bin/
-      #   env:
-      #     VERSION: "0.15.1"
-
-      # - name: Generate changelog
-      #   if: ${{ github.event_name == 'workflow_dispatch' }}
-      #   id: changelog
-      #   run: |
-      #     echo "Creating change log for tag: ${{ steps.nbgv.outputs.SemVer2 }}"
-      #     git tag ${{ steps.nbgv.outputs.SemVer2 }}
-      #     REPORT=$(git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }} | tee)
-      #     REPORT="${REPORT//'%'/'%25'}"
-      #     REPORT="${REPORT//$'\n'/'%0A'}"
-      #     REPORT="${REPORT//$'\r'/'%0D'}"
-      #     echo "::set-output name=out::$REPORT"
-
-      # - name: Create Release
-      #   if: ${{ github.event_name == 'workflow_dispatch' }}
-      #   uses: actions/create-release@v1.1.4
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     prerelease: ${{ steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen != '' }}
-      #     tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
-      #     release_name: ${{ steps.nbgv.outputs.SemVer2 }}
-      #     body: ${{ steps.changelog.outputs.out }}
       #</post-deploy-actions>

@@ -4,7 +4,7 @@
     <!-- [vstest-docs/report.md](https://github.com/Microsoft/vstest-docs/blob/main/docs/report.md#naming) -->
     <AssemblyName>github.testlogger</AssemblyName>
     <RootNamespace>$(RepoName).$(MSBuildProjectName)</RootNamespace>
-    <PackageName>$(RepoName).$(MSBuildProjectName)</PackageName>
+    <PackageId>$(RepoName).$(MSBuildProjectName)</PackageId>
     <IsPackable>true</IsPackable>
     <PackageTags>github actions vstest logger</PackageTags>
     <DevelopmentDependency>true</DevelopmentDependency>

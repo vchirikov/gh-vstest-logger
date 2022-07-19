@@ -1461,7 +1461,7 @@
           "xunit.extensibility.core": "[2.4.2-pre.12]"
         }
       },
-      "github.testlogger": {
+      "TestPlatform.Extensions.GitHubLogger": {
         "type": "Project",
         "dependencies": {
           "IsExternalInit": "1.0.3",
