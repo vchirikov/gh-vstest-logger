@@ -52,8 +52,6 @@ internal sealed class GitHubApi
     public async Task<CheckRun> UpdateCheckRunAsync(CheckRun current, CheckRunUpdate update)
     {
 
-        _api.Value.PullRequest.ReviewComment.Create()
-
         return await _api.Value.Check.Run.Update(
             _params.GITHUB_REPOSITORY_OWNER,
             _params.GITHUB_REPOSITORY.Split('/').LastOrDefault() ?? "unknown",
