@@ -1,4 +1,4 @@
-name: Unit-tests
+name: Tests
 concurrency:
   group: tests-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
@@ -24,14 +24,14 @@ env:
   POWERSHELL_TELEMETRY_OPTOUT: 1
   POWERSHELL_UPDATECHECK_OPTOUT: 1
 jobs:
-  unit-tests:
+  tests:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/unit-test') && github.event.sender.login == 'vchirikov') }}
-    name: Unit tests
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Save default env variables
         run: |
-          env > $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' >> $GITHUB_ENV
 
       - name: git checkout
         uses: actions/checkout@v2

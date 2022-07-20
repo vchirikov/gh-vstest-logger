@@ -43,7 +43,7 @@ jobs:
     steps:
       - name: Save default env variables
         run: |
-          env > $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' >> $GITHUB_ENV
 
       - name: git checkout
         uses: actions/checkout@v2
