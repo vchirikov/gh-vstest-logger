@@ -41,4 +41,10 @@ public class GitHubApiTests
 
         Assert.False(result);
     }
+
+    [Fact]
+    public void AlwaysFail()
+    {
+        Assert.False(true);
+    }
 }

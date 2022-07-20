@@ -51,6 +51,9 @@ internal sealed class GitHubApi
 
     public async Task<CheckRun> UpdateCheckRunAsync(CheckRun current, CheckRunUpdate update)
     {
+
+        _api.Value.PullRequest.ReviewComment.Create()
+
         return await _api.Value.Check.Run.Update(
             _params.GITHUB_REPOSITORY_OWNER,
             _params.GITHUB_REPOSITORY.Split('/').LastOrDefault() ?? "unknown",
@@ -69,6 +72,7 @@ internal sealed class GitHubApi
 
     public static void OutputVariable(string name, string value)
         => Console.WriteLine($"::set-output name={Escape(name)}::{Escape(value)}");
+
 
     public static string Escape(string value) => value
         .Replace("%", "%25", StringComparison.Ordinal)
