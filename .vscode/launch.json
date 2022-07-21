@@ -5,15 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Attach",
-            "type": "coreclr",
-            "request": "attach"
-        },
-        {
-            "name": "Run dotnet test with logger",
+            "name": "gh-vstest-logger",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
+            "preLaunchTask": "dotnet build",
             "logging": {
                 "programOutput": true,
                 "processExit": true,
@@ -22,18 +17,30 @@
             "program": "dotnet",
             "args": [
                 "test",
+                "--nologo",
+                "--no-build",
                 "--logger",
-                // "\"github;name=unit-tests;GITHUB_TOKEN=\""
-                "\"github;name=unit-tests\""
+                "\"github;name=unit-tests;CI=1;GITHUB_ACTIONS=1;echo=1\""
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "console": "internalConsole",
             "internalConsoleOptions": "openOnFirstSessionStart",
             "env": {
                 "VSTEST_HOST_DEBUG": "1"
             }
+        },
+        {
+            "name": "attach testhost",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "testhost",
+            "logging": {
+                "programOutput": true,
+                "processExit": true,
+                "moduleLoad": false,
+            },
         },
     ]
 }

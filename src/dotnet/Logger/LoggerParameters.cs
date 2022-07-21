@@ -36,6 +36,11 @@ internal record class LoggerParameters
     public string name = "dotnet-test-report";
 
     /// <summary>
+    /// Use echo of gh commands, default is false (off).
+    /// </summary>
+    public string echo = "";
+
+    /// <summary>
     /// Always set to true.
     /// </summary>
     public string CI = "";

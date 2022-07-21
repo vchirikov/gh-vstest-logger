@@ -1,9 +1,6 @@
 using System.Text;
-using GitHub.VsTest.Logger;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
-using Octokit;
-using static GitHub.VsTest.Logger.GitHubApi;
 
 namespace GitHub.VsTest.Logger;
 
@@ -18,87 +15,73 @@ public class GitHubLogger : ITestLoggerWithParameters
     public const string FriendlyName = "github";
 
     private LoggerParameters _params = null!;
-    private GitHubApi _api = null!;
+    private GitHubApi _gh = null!;
     private TestRunStatus _status = TestRunStatus.NotRunning;
-    private Task _initializationTask = Task.FromException(new ("Lifetime error"));
-    private CheckRun _checkRun = null!;
     private readonly SemaphoreSlim _locker = new(1,1);
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(120);
     private readonly ConcurrentDictionary<TestResult, Task> _testResults = new();
+    private IDisposable? _block;
 
     public void Initialize(TestLoggerEvents events, Dictionary<string, string> parameters)
     {
         _params = LoggerParameters.Create(parameters);
-        _api = new GitHubApi(_params);
-        if (!_api.IsGitHubActions())
+        _gh = new GitHubApi(_params, new ConsoleOutput());
+        _gh.Echo(_params.echo.asBool());
+        if (!_gh.IsGitHubActions())
         {
-            Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
+            _gh.Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
             return;
         }
-        if (string.IsNullOrEmpty(_params.GITHUB_TOKEN))
+        if (!string.IsNullOrEmpty(_params.GITHUB_TOKEN) && _params.GITHUB_TOKEN.Length != 40)
         {
-            Warning("Can't see GITHUB_TOKEN env variable or parameter. Logger won't do anything.");
+            _gh.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
             return;
         }
-
-        if (_params.GITHUB_TOKEN.Length != 40)
-        {
-            Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
-            return;
-        }
-
         events.TestRunStart += (_, args) => OnTestRunStart(args.TestRunCriteria);
         events.TestResult += (_, args) => OnTestResult(args.Result);
         events.TestRunComplete += (_, args) => OnTestRunComplete(args);
     }
 
-
     /// <summary> Raised when a test run starts. </summary>
-    private void OnTestRunStart(TestRunCriteria _)
+    private void OnTestRunStart(TestRunCriteria testRunCriteria)
     {
-        if (_status == TestRunStatus.Started)
+        try
         {
-            const string errMsg = "Something went wrong, TestRunStart was already called.";
-            Error(errMsg);
-            throw new(errMsg);
-        }
-        _initializationTask = Task.Run(async () => {
-            try
-            {
-                await Init().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Error($"Exception: {ex.Message}");
-                using var _ = Block("Exception info");
-                Error(ex.ToString());
-            }
-        });
+            if (_status == TestRunStatus.Started)
+                throw new($"Something went wrong, {nameof(OnTestRunStart)} was already called.");
 
-        async Task Init()
-        {
-            if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
+            if (!_locker.Wait(_timeout))
                 throw new TimeoutException($"{nameof(OnTestRunStart)}: Waiting for the lock is too long");
+
             try
             {
-                _checkRun = await _api.CreateCheckRunAsync().ConfigureAwait(false);
                 _status = TestRunStatus.Started;
+                _block = _gh.Block($"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}");
             }
             finally
             {
                 _locker.Release();
             }
         }
+        catch (Exception ex)
+        {
+            _gh.Error($"Exception: {ex.Message}");
+            using var _ = _gh.Block("Exception info");
+            _gh.Error(ex.ToString());
+        }
     }
 
     /// <summary> Raised when a test result is received. </summary>
     private void OnTestResult(TestResult result)
     {
+        if (_status != TestRunStatus.Started)
+            throw new($"Unexpected test run status: '{_status}'.");
+
         // annotate only failed tests
         if (result.Outcome != TestOutcome.Failed && result.Outcome != TestOutcome.NotFound)
         {
             if (!_testResults.TryAdd(result, Task.CompletedTask))
-                Error($"Dictionary already contains the testResult for {result.DisplayName}");
+                _gh.Error($"Dictionary already contains the testResult for {result.DisplayName}");
             return;
         }
         var task = Task.Run(async () => {
@@ -108,23 +91,20 @@ public class GitHubLogger : ITestLoggerWithParameters
             }
             catch (Exception ex)
             {
-                Error($"Exception: {ex.Message}");
-                using var _ = Block("Exception info");
-                Error(ex.ToString());
+                _gh.Error($"Exception: {ex.Message}");
+                using var _ = _gh.Block("Exception info");
+                _gh.Error(ex.ToString());
             }
         });
 
         if (!_testResults.TryAdd(result, task))
-            Error($"Dictionary already contains the testResult for {result.DisplayName}");
+            _gh.Error($"Dictionary already contains the testResult for {result.DisplayName}");
 
+        // could be sync, but for the future use let it be async (for file io/rest calls)
         async Task OnTestResultInternalAsync(TestResult result)
         {
-            if (_status != TestRunStatus.Started)
-                await _initializationTask.ConfigureAwait(false);
-
             if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
-
             try
             {
                 if (_status != TestRunStatus.Started)
@@ -144,27 +124,15 @@ public class GitHubLogger : ITestLoggerWithParameters
                 foreach (var st in stackTraces)
                 {
                     if (!int.TryParse(st.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
-                        Warning("Can't parse line in stacktrace");
+                        _gh.Warning("Can't parse line in stacktrace");
 
-                    var annotation = new NewCheckRunAnnotation(
-                        WorkspaceRelativePath(st.File),
-                        line,
-                        line + 5,
-                        CheckAnnotationLevel.Failure,
-                        (string.IsNullOrWhiteSpace(st.Method) ? "" : $"{st.Method}(): ") + result.ErrorMessage
-                    ){
-                        Title = result.DisplayName,
-                        RawDetails = GetDetailsMessage(result, sb),
-                    };
-
-                    var update = new CheckRunUpdate() {
-                        Output = new NewCheckRunOutput(_params.name, "Running..." ) {
-                            Annotations = new List<NewCheckRunAnnotation>() { annotation },
-                        },
-                        Status = CheckStatus.InProgress,
-                    };
-
-                    _checkRun = await _api.UpdateCheckRunAsync(_checkRun, update).ConfigureAwait(false);
+                    _gh.Error(
+                        message: GetDetailsMessage(result, sb),
+                        title: $"{result.TestCase.DisplayName}",
+                        file: WorkspaceRelativePath(st.File),
+                        line: line > 5 ? line - 5 : line,
+                        endLine: line + 1
+                    );
                 }
             }
             finally
@@ -180,7 +148,6 @@ public class GitHubLogger : ITestLoggerWithParameters
         {
             if (!string.IsNullOrEmpty(result.ErrorMessage))
             {
-                sb.AppendLine("[Error Message]");
                 sb.AppendLine(result.ErrorMessage);
             }
 
@@ -215,31 +182,25 @@ public class GitHubLogger : ITestLoggerWithParameters
     {
         try
         {
+            if (_status != TestRunStatus.Started)
+                throw new($"Unexpected test run status: '{_status}'.");
             OnTestRunCompleteInternalAsync(results).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
-            Error($"Exception: {ex.Message}");
-            using var _ = Block("Exception info");
-            Error(ex.ToString());
+            _gh.Error($"Exception: {ex.Message}");
+            using var _ = _gh.Block("Exception info");
+            _gh.Error(ex.ToString());
         }
 
+        // could be sync, but for the future use let it be async (for file io/rest calls)
         async Task OnTestRunCompleteInternalAsync(TestRunCompleteEventArgs results)
         {
-            CheckConclusion conclusion = CheckConclusion.Neutral;
             string summary = "";
             try
             {
-                // just in case
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
                 var sb = new StringBuilder(1024);
-                if (results.TestRunStatistics.Stats.Any(stat => stat.Key == TestOutcome.Failed && stat.Value > 0))
-                    conclusion = CheckConclusion.Failure;
-                else
-                    conclusion = CheckConclusion.Success;
-
-                if (results.IsAborted || results.IsCanceled)
-                    conclusion = CheckConclusion.Cancelled;
 
                 sb.Append("**Total tests**: ").Append(results.TestRunStatistics.ExecutedTests).AppendLine("  ");
 
@@ -257,17 +218,11 @@ public class GitHubLogger : ITestLoggerWithParameters
                 sb.AppendLine();
                 sb.Append("⌚ **Total time**: ").AppendLine(FormatTimeSpan(results.ElapsedTimeInRunningTests));
                 summary = sb.ToString();
-                var update = new CheckRunUpdate() {
-                    Output = new NewCheckRunOutput(_params.name, summary),
-                    Status = CheckStatus.Completed,
-                    Conclusion = conclusion,
-                };
-                _checkRun = await _api.UpdateCheckRunAsync(_checkRun, update).ConfigureAwait(false);
             }
             finally
             {
-                OutputVariable("conclusion", conclusion.ToString());
-                OutputVariable("summary", summary);
+                _block?.Dispose();
+                _gh.OutputVariable("summary", summary);
                 if (await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 {
                     _status = TestRunStatus.Finished;
@@ -275,7 +230,7 @@ public class GitHubLogger : ITestLoggerWithParameters
                 }
                 else
                 {
-                    Error("Waiting for the lock is too long");
+                    _gh.Error("Waiting for the lock is too long");
                 }
             }
         }

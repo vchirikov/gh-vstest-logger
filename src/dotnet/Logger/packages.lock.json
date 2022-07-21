@@ -46,12 +46,6 @@
         "resolved": "3.5.108",
         "contentHash": "+1Zn/jrrbBS1MVK20W8d8g4nEREPuZ6IHDTmtqlJiNeGXN45Iou0IPe5hykbLAVyWfnoN3bPCDBIVjeAfoMsWQ=="
       },
-      "Octokit": {
-        "type": "Direct",
-        "requested": "[1.0.0, )",
-        "resolved": "1.0.0",
-        "contentHash": "kht1ciqu2WKhx1fwJR+OZc7daSGHtmaYv3aLLeLZU8cLDyhLccS3ZSxcFI/jWin9DIfShXm0ZRFZLUy52sTYoQ=="
-      },
       "Roslynator.Analyzers": {
         "type": "Direct",
         "requested": "[4.1.1, )",

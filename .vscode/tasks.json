@@ -2,16 +2,48 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "dotnet build",
+            "detail": "runs dotnet build",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/dotnet/GitHubLogger/GitHubLogger.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary"
+                "--no-restore",
+                "-nologo",
+                "-maxCpuCount",
+                "-nodeReuse:false",
+                "-p:UseRazorBuildServer=false",
+                "-p:UseSharedCompilation=false",
+                "-p:EnableAnalyzer=true",
+                "-p:EnableNETAnalyzers=true",
+                "-p:GenerateFullPaths=true",
+                "/clp:ForceNoAlign"
             ],
-            "problemMatcher": "$msCompile"
+            "runOptions": {
+                "instanceLimit": 1,
+                "reevaluateOnRerun": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "echo": false,
+                "focus": false,
+                "revealProblems": "never",
+                "showReuseMessage": false,
+                "clear": true,
+                "panel": "shared",
+                "group": "shared"
+            },
+            "problemMatcher": [],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "MSBUILDDISABLENODEREUSE": "1"
+                }
+            }
         },
         {
             "label": "publish",
