@@ -103,6 +103,7 @@ public class GitHubLogger : ITestLoggerWithParameters
         // could be sync, but for the future use let it be async (for file io/rest calls)
         async Task OnTestResultInternalAsync(TestResult result)
         {
+            #warning WARNING EXAMPLE
             if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
             try
@@ -120,6 +121,7 @@ public class GitHubLogger : ITestLoggerWithParameters
                     File          = fn,
                     Line          = ln,
                 });
+                just build errror
                 var sb = new StringBuilder(1024);
                 foreach (var st in stackTraces)
                 {
