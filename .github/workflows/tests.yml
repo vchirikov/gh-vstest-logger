@@ -53,8 +53,9 @@ jobs:
 
       - name: Print info
         run: |
-          echo "::notice::Triggered on ${{ github.event_name }}"
-          echo "::notice::SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
+          echo "Triggered on ${{ github.event_name }}"
+          echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
+          echo "::add-matcher::./.github/csc.json"
 
       - name: Report running
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
@@ -77,14 +78,12 @@ jobs:
         shell: bash --noprofile --norc {0}
         run: |
           echo "::echo::off"
-          echo "::add-matcher::.github/csc.json"
           exec 5>&1
           out=$(dotnet build -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
           exit_code=$?
           out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
           echo "::set-output name=out::$out"
           exec 5>&-
-          echo "::remove-matcher owner=csc::"
           exit $exit_code
 
       - name: Report dotnet build failure
