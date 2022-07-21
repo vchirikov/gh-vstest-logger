@@ -65,8 +65,8 @@ jobs:
 
       - name: Print info
         run: |
-          echo "::notice::Triggered on ${{ github.event_name }}"
-          echo "::notice::SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
+          echo "Triggered on ${{ github.event_name }}"
+          echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
 
       - name: Verify the public branch name matches version.json
         if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}
@@ -106,7 +106,6 @@ jobs:
         id: build
         shell: bash --noprofile --norc {0}
         run: |
-          echo "::echo::off"
           echo "::add-matcher::.github/csc.json"
           exec 5>&1
           out=$(dotnet build --nologo -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
@@ -138,7 +137,6 @@ jobs:
         id: tests
         shell: bash --noprofile --norc {0}
         run: |
-          echo "::echo::off"
           echo "::add-matcher::.github/csc.json"
           exec 5>&1
           out=$(dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' ; exit ${PIPESTATUS[0]} )
