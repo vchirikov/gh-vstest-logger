@@ -3,6 +3,7 @@
 namespace GitHub.VsTest.Logger.UnitTests;
 public class GitHubApiTests
 {
+    #warning test warning annotations
     [Fact]
     public void IsGitHubActions_Success()
     {
