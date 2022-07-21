@@ -148,7 +148,7 @@ jobs:
           exit $exit_code
 
       - name: Report tests success
-        if: ${{ steps.tests.outcome == 'success' &&  steps.tests.outputs.conclusion == 'Success'}}
+        if: ${{ steps.tests.outcome == 'success' }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -302,7 +302,7 @@ jobs:
           body: ${{ steps.changelog.outputs.out }}
 
       - name: Report cancellation
-        if: ${{ cancelled() || steps.tests.outputs.conclusion == 'Cancelled' }}
+        if: ${{ cancelled() }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
