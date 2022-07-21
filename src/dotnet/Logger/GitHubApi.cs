@@ -116,7 +116,7 @@ internal sealed class GitHubApi
         => WriteCommand(new("echo", isOn ? "on" : "off"));
 
     private void Group(string name)
-        => WriteCommand(new("block", name));
+        => WriteCommand(new("group", name));
 
     private void EndGroup()
         => WriteCommand(new("endgroup"));
