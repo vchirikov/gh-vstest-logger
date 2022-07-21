@@ -68,6 +68,8 @@ jobs:
           echo "Triggered on ${{ github.event_name }}"
           echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
           echo "::add-matcher::./.github/csc.json"
+          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
+          echo "##[add-matcher]./.github/csc.json"
 
       - name: Verify the public branch name matches version.json
         if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}
@@ -108,7 +110,7 @@ jobs:
         shell: bash --noprofile --norc {0}
         run: |
           exec 5>&1
-          out=$(dotnet build --nologo -c Debug 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
+          out=$(dotnet build --nologo -c Debug -p:GenerateFullPaths=true /clp:NoSummary 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
           exit_code=$?
           out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
           echo "::set-output name=out::$out"
@@ -181,7 +183,7 @@ jobs:
         shell: bash --noprofile --norc {0}
         run: |
           exec 5>&1
-          out=$(dotnet pack --no-restore --nologo -c Release 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]} )
+          out=$(dotnet pack --no-restore --nologo -c Release -p:GenerateFullPaths=true /clp:NoSummary 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]} )
           exit_code=$?
           out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
           echo "::set-output name=out::$out"
