@@ -29,6 +29,7 @@ public class GitHubApiTests
         var result = api.IsGitHubActions;
 
         Assert.False(result);
+        #warning add new warning
     }
 
     [Theory]
@@ -41,6 +42,7 @@ public class GitHubApiTests
         var api = new GitHubApi(LoggerParameters.Create(), output.Object);
         api.Output.WriteCommand(cmd);
         Assert.Equal(expected, result);
+        #error and error too
     }
 
     public readonly static IEnumerable<object[]> WriteCommand_Input = new[]
