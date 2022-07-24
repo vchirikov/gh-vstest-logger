@@ -57,6 +57,8 @@ jobs:
           echo "Triggered on ${{ github.event_name }}"
           echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
           echo "::add-matcher::./.github/csc.json"
+          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
+          echo "##[add-matcher]./.github/csc.json"
 
       - name: NuGet cache restore
         uses: actions/cache@v3
@@ -91,8 +93,6 @@ jobs:
         with:
           commands: |-
             dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
-          report-start: |-
-            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
 
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}

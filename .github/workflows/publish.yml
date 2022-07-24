@@ -123,8 +123,6 @@ jobs:
         with:
           commands: |-
             dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
-          report-start: |-
-            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
 
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}
