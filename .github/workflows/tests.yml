@@ -30,8 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
+          clean: false
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
 
@@ -71,7 +72,6 @@ jobs:
         with:
           commands: |-
             dotnet build --nologo -c Debug -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
-          token: ${{ secrets.GITHUB_TOKEN }}
           report-start: |-
             :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
           report-failure: |-
@@ -80,7 +80,7 @@ jobs:
             <details open> <summary> dotnet build output </summary>
 
             ```diff
-            ${{ steps.build.outputs.out }}
+            {0}
             ```
 
             </details>
@@ -91,16 +91,29 @@ jobs:
         with:
           commands: |-
             dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
-          token: ${{ secrets.GITHUB_TOKEN }}
           report-start: |-
             :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
-          report-success: |-
+
+      - name: Report tests success
+        if: ${{ steps.tests.outcome == 'success' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
 
             ${{ steps.tests.outputs.summary }}
 
             `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
-          report-failure: |-
+
+      - name: Report tests failed
+        if: ${{ failure() && steps.tests.outcome == 'failure' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
             ${{ steps.tests.outputs.summary }}
