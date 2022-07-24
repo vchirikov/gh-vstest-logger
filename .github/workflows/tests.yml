@@ -56,16 +56,6 @@ jobs:
           echo "Triggered on ${{ github.event_name }}"
           echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
           echo "::add-matcher::./.github/csc.json"
-          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
-          echo "##[add-matcher]./.github/csc.json"
-
-      - name: Report running
-        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
-          message: |
-            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
 
       - name: NuGet cache restore
         uses: actions/cache@v3
@@ -77,23 +67,13 @@ jobs:
 
       - name: dotnet build
         id: build
-        shell: bash --noprofile --norc {0}
-        run: |
-          exec 5>&1
-          out=$(dotnet build --nologo -c Debug -p:GenerateFullPaths=true /clp:NoSummary 2>&1 | tee >(cat - >&5) | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g' ; exit ${PIPESTATUS[0]})
-          exit_code=$?
-          out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
-          echo "::set-output name=out::$out"
-          exec 5>&-
-          exit $exit_code
-
-      - name: Report dotnet build failure
-        if: ${{ failure() && steps.build.outcome == 'failure'}}
-        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        uses: vchirikov/.github/shell-and-report-action@master
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
-          message: |
+          commands: |-
+            dotnet build --nologo -c Debug -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
+          report-start: |-
+            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
+          report-failure: |-
             ❌ Build failed  `(╯°□°)╯︵ ┻━┻`
 
             <details open> <summary> dotnet build output </summary>
@@ -106,36 +86,19 @@ jobs:
 
       - name: dotnet test
         id: tests
-        shell: bash --noprofile --norc {0}
-        run: |
-          exec 5>&1
-          out=$(dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" 2>&1 | tee >(cat - >&5) | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' ; exit ${PIPESTATUS[0]} )
-          exit_code=$?
-          out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
-          echo "::set-output name=out::$out"
-          exec 5>&-
-          exit $exit_code
-
-      - name: Report tests success
-        if: ${{ steps.tests.outcome == 'success' }}
-        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        uses: vchirikov/.github/shell-and-report-action@master
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
-          message: |
+          commands: |-
+            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
+          report-start: |-
+            :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
+          report-success: |-
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
 
             ${{ steps.tests.outputs.summary }}
 
             `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
-
-      - name: Report tests failed
-        if: ${{ failure() && steps.tests.outcome == 'failure' }}
-        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
-          message: |
+          report-failure: |-
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
             ${{ steps.tests.outputs.summary }}
