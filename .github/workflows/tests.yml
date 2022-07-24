@@ -71,6 +71,7 @@ jobs:
         with:
           commands: |-
             dotnet build --nologo -c Debug -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
+          token: ${{ secrets.GITHUB_TOKEN }}
           report-start: |-
             :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
           report-failure: |-
@@ -90,6 +91,7 @@ jobs:
         with:
           commands: |-
             dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
+          token: ${{ secrets.GITHUB_TOKEN }}
           report-start: |-
             :gear: Run unit-tests... `༼ つ ◕_◕ ༽つ`
           report-success: |-
