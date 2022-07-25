@@ -7,6 +7,13 @@ defaults:
   run:
     shell: bash
 on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+        description: GITHUB_SHA ref to checkout and to link annotations to
+        default: ""
   workflow_dispatch:
     inputs:
       confirmation:
@@ -17,8 +24,6 @@ on:
         options:
           - "no"
           - "yes"
-  issue_comment:
-    types: [created]
   push:
     branches:
       - release/v*
@@ -37,40 +42,42 @@ env:
   POWERSHELL_UPDATECHECK_OPTOUT: 1
 jobs:
   publish:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'yes') || (github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && startsWith(github.event.comment.body, '/publish') && github.event.sender.login == 'vchirikov') }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'yes') || github.event_name == 'workflow_call' }}
     name: Publish
     runs-on: ubuntu-latest
     steps:
-      - name: git checkout
+      - name: git checkout / on 'workflow_call'
+        if: ${{ github.event_name == 'workflow_call' }}
         uses: actions/checkout@v3
         with:
           clean: false
-          # Avoid shallow clone for Nerdbank.GitVersioning
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
-      - name: Checkout Pull Request
-        if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') }}
-        run: gh pr checkout ${{ github.event.issue.number }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: git checkout / on non-'workflow_call'
+        if: ${{ github.event_name != 'workflow_call' }}
+        uses: actions/checkout@v3
+        with:
+          clean: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - name: Save & forward default env variables
+        id: gh
         run: |
-          env | grep -E '^(GITHUB_|CI)' >> $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> $GITHUB_ENV
+          sha=$(git rev-parse HEAD)
+          echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
+          echo "::set-output name=sha::$sha"
+          echo "::add-matcher::./.github/csc.json"
+          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
+          echo "##[add-matcher]./.github/csc.json"
 
       - name: Generate version variables
         id: nbgv
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
-
-      - name: Print info
-        run: |
-          echo "Triggered on ${{ github.event_name }}"
-          echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
-          echo "::add-matcher::./.github/csc.json"
-          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
-          echo "##[add-matcher]./.github/csc.json"
 
       - name: Verify the public branch name matches version.json
         if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}

@@ -3,7 +3,7 @@
 GitHub `dotnet test` logger without political shit.  
 
 > **Warning**
-> The logger is supposed to **be used from within a GitHub Workflow**,
+> The logger is supposed to **be used from within a GitHub Workflow**.
 
 ## TLDR 
 
@@ -21,7 +21,7 @@ Because technologies must be shared without the idiotic crap in their licenses.
 
 ## Screenshots
 
-![Example of a summary](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/test-ci-workflow.png)  
+![Example of PR annotation](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-annotation.png)  
 
 ![Example of PR comment](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment.png)
 
@@ -33,7 +33,10 @@ Because technologies must be shared without the idiotic crap in their licenses.
 ```
 
 ```bash
+# with creation annotations via output commands
 dotnet test --logger "github;name=unit-tests"
+# or via Octokit (it's necessary if a workflow is triggered on "pull_request" or issue_comment, we should provide the real `sha` to the logger)
+dotnet test --logger "github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=$sha"
 ```
 
 Parameters can be set with the command line args, or through environment variables.  

@@ -1,0 +1,55 @@
+name: Tests
+concurrency:
+  group: tests-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+permissions: write-all
+defaults:
+  run:
+    shell: bash
+on:
+  issue_comment:
+    types: [created]
+jobs:
+  pre:
+    name: Initialize
+    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && github.event.sender.login == 'vchirikov') }}
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.gh.outputs.sha }}
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+        with:
+          clean: false
+          fetch-depth: 0
+
+      - name: Checkout Pull Request
+        if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') }}
+        run: |
+          gh pr checkout ${{ github.event.issue.number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: git rev-parse HEAD
+        id: gh
+        run: |
+          sha=$(git rev-parse HEAD);
+          echo "::set-output name=sha::$sha"
+
+  unit-tests-workflow-job:
+    name: /unit-tests
+    if: ${{ startsWith(github.event.comment.body, '/unit-test') }}
+    needs: pre
+    secrets: inherit
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ needs.pre.outputs.sha }}
+
+  publish-workflow-job:
+    name: /publish
+    if: ${{ startsWith(github.event.comment.body, '/publish') }}
+    needs: pre
+    secrets: inherit
+    uses: ./.github/workflows/publish.yml
+    with:
+      ref: ${{ needs.pre.outputs.sha }}
