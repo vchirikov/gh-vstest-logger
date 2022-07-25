@@ -222,5 +222,4 @@ internal record class LoggerParameters
     /// The path to the directory containing preinstalled tools for GitHub-hosted runners. For more information, see "About GitHub-hosted runners". For example, C:\hostedtoolcache\windows
     /// </summary>
     public string RUNNER_TOOL_CACHE = "";
-
 }

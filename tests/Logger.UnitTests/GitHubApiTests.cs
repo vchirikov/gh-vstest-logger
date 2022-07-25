@@ -1,4 +1,4 @@
-// #define ALWAYS_FAIL
+#define ALWAYS_FAIL
 
 namespace GitHub.VsTest.Logger.UnitTests;
 public class GitHubApiTests
@@ -42,7 +42,6 @@ public class GitHubApiTests
         var api = new GitHubApi(LoggerParameters.Create(), output.Object);
         api.Output.WriteCommand(cmd);
         Assert.Equal(expected, result);
-        #error and error too
     }
 
     public readonly static IEnumerable<object[]> WriteCommand_Input = new[]
