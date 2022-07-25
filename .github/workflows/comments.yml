@@ -1,6 +1,6 @@
-name: Tests
+name: Comments
 concurrency:
-  group: tests-${{ github.ref }}-${{ github.event_name }}
+  group: comments-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 permissions: write-all
 defaults:
