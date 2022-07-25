@@ -16,25 +16,26 @@ public class GitHubLogger : ITestLoggerWithParameters
 
     private LoggerParameters _params = null!;
     private GitHubApi _gh = null!;
+    private IGitHubAnnotationWriter? _annotationWriter;
     private TestRunStatus _status = TestRunStatus.NotRunning;
     private readonly SemaphoreSlim _locker = new(1,1);
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(120);
     private readonly ConcurrentDictionary<TestResult, Task> _testResults = new();
-    private IDisposable? _block;
+    private Task _initializationTask = Task.FromException(new ("Lifetime error"));
 
     public void Initialize(TestLoggerEvents events, Dictionary<string, string> parameters)
     {
         _params = LoggerParameters.Create(parameters);
         _gh = new GitHubApi(_params, new ConsoleOutput());
-        _gh.Echo(_params.echo.asBool());
-        if (!_gh.IsGitHubActions())
+        _gh.Output.Echo(_params.echo.asBool());
+        if (!_gh.IsGitHubActions)
         {
-            _gh.Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
+            _gh.Output.Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
             return;
         }
         if (!string.IsNullOrEmpty(_params.GITHUB_TOKEN) && _params.GITHUB_TOKEN.Length != 40)
         {
-            _gh.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
+            _gh.Output.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
             return;
         }
         events.TestRunStart += (_, args) => OnTestRunStart(args.TestRunCriteria);
@@ -45,29 +46,40 @@ public class GitHubLogger : ITestLoggerWithParameters
     /// <summary> Raised when a test run starts. </summary>
     private void OnTestRunStart(TestRunCriteria testRunCriteria)
     {
-        try
+        if (_status == TestRunStatus.Started)
         {
-            if (_status == TestRunStatus.Started)
-                throw new($"Something went wrong, {nameof(OnTestRunStart)} was already called.");
+            _gh.Output.Error($"Something went wrong, {nameof(OnTestRunStart)} was already called.");
+            return;
+        }
 
-            if (!_locker.Wait(_timeout))
-                throw new TimeoutException($"{nameof(OnTestRunStart)}: Waiting for the lock is too long");
-
+        _initializationTask = Task.Run(async () => {
             try
             {
+                await InitAsync().ConfigureAwait(false);
                 _status = TestRunStatus.Started;
-                _block = _gh.Block($"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}");
+            }
+            catch (Exception ex)
+            {
+                _gh.Output.Error($"Exception: {ex.Message}");
+                using var _ = _gh.Output.Block("Exception info");
+                _gh.Output.Error(ex.ToString());
+            }
+        });
+
+        async Task InitAsync()
+        {
+            if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
+                throw new TimeoutException($"{nameof(OnTestRunStart)}: Waiting for the lock is too long");
+            try
+            {
+                string testRunName =$"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}";
+                _annotationWriter = await _gh.CreateAnnotationWriterAsync(testRunName).ConfigureAwait(false);
+                _status = TestRunStatus.Started;
             }
             finally
             {
                 _locker.Release();
             }
-        }
-        catch (Exception ex)
-        {
-            _gh.Error($"Exception: {ex.Message}");
-            using var _ = _gh.Block("Exception info");
-            _gh.Error(ex.ToString());
         }
     }
 
@@ -81,7 +93,7 @@ public class GitHubLogger : ITestLoggerWithParameters
         if (result.Outcome != TestOutcome.Failed && result.Outcome != TestOutcome.NotFound)
         {
             if (!_testResults.TryAdd(result, Task.CompletedTask))
-                _gh.Error($"Dictionary already contains the testResult for {result.DisplayName}");
+                _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
             return;
         }
         var task = Task.Run(async () => {
@@ -91,16 +103,15 @@ public class GitHubLogger : ITestLoggerWithParameters
             }
             catch (Exception ex)
             {
-                _gh.Error($"Exception: {ex.Message}");
-                using var _ = _gh.Block("Exception info");
-                _gh.Error(ex.ToString());
+                _gh.Output.Error($"Exception: {ex.Message}");
+                using var _ = _gh.Output.Block("Exception info");
+                _gh.Output.Error(ex.ToString());
             }
         });
 
         if (!_testResults.TryAdd(result, task))
-            _gh.Error($"Dictionary already contains the testResult for {result.DisplayName}");
+            _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
 
-        // could be sync, but for the future use let it be async (for file io/rest calls)
         async Task OnTestResultInternalAsync(TestResult result)
         {
             if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
@@ -109,6 +120,9 @@ public class GitHubLogger : ITestLoggerWithParameters
             {
                 if (_status != TestRunStatus.Started)
                     throw new($"Unexpected TestRun status: {_status}");
+
+                if (_annotationWriter == null)
+                    throw new($"annotationWriter must not be null, test run status: {_status}");
 
                 var stackTraces = StackTraceParser.Parse(result.ErrorStackTrace, (f, t, m, pl, ps, fn, ln) => new
                 {
@@ -124,15 +138,15 @@ public class GitHubLogger : ITestLoggerWithParameters
                 foreach (var st in stackTraces)
                 {
                     if (!int.TryParse(st.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
-                        _gh.Warning("Can't parse line in stacktrace");
+                        _gh.Output.Warning("Can't parse line in stacktrace");
 
-                    _gh.Error(
+                    await _annotationWriter.ErrorAsync(
                         message: GetDetailsMessage(result, sb),
                         title: $"{result.TestCase.DisplayName}",
                         file: WorkspaceRelativePath(st.File),
                         line: line > 5 ? line - 5 : line,
                         endLine: line + 1
-                    );
+                    ).ConfigureAwait(false);
                 }
             }
             finally
@@ -188,9 +202,9 @@ public class GitHubLogger : ITestLoggerWithParameters
         }
         catch (Exception ex)
         {
-            _gh.Error($"Exception: {ex.Message}");
-            using var _ = _gh.Block("Exception info");
-            _gh.Error(ex.ToString());
+            _gh.Output.Error($"Exception: {ex.Message}");
+            using var _ = _gh.Output.Block("Exception info");
+            _gh.Output.Error(ex.ToString());
         }
 
         // could be sync, but for the future use let it be async (for file io/rest calls)
@@ -221,7 +235,11 @@ public class GitHubLogger : ITestLoggerWithParameters
             }
             finally
             {
-                _block?.Dispose();
+                if (_annotationWriter != null)
+                {
+                    await _annotationWriter.DisposeAsync().ConfigureAwait(false);
+                    _annotationWriter = null;
+                }
                 _gh.OutputVariable("summary", summary);
                 if (await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 {
@@ -230,7 +248,7 @@ public class GitHubLogger : ITestLoggerWithParameters
                 }
                 else
                 {
-                    _gh.Error("Waiting for the lock is too long");
+                    _gh.Output.Error("Waiting for the lock is too long");
                 }
             }
         }

@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.TestPlatform.ObjectModel" />
     <PackageReference Include="StackTraceParser.Source" />
+    <PackageReference Include="Octokit" />
     <!-- For compability with pre C# 9.0 era (netcoreapp3.1 and lower)-->
     <PackageReference Include="IsExternalInit" />
 

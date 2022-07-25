@@ -14,7 +14,7 @@ public class GitHubApiTests
         });
 
         var api = new GitHubApi(parameters, Mock.Of<IOutput>());
-        var result = api.IsGitHubActions();
+        var result = api.IsGitHubActions;
 
         Assert.True(result);
     }
@@ -27,7 +27,7 @@ public class GitHubApiTests
         });
 
         var api = new GitHubApi(parameters, Mock.Of<IOutput>());
-        var result = api.IsGitHubActions();
+        var result = api.IsGitHubActions;
 
         Assert.False(result);
     }
@@ -40,7 +40,7 @@ public class GitHubApiTests
         string result = "";
         output.Setup(x => x.Write(It.IsAny<string>())).Callback((string s) => result = s);
         var api = new GitHubApi(LoggerParameters.Create(), output.Object);
-        api.WriteCommand(cmd);
+        api.Output.WriteCommand(cmd);
         Assert.Equal(expected, result);
     }
 
