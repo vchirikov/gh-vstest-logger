@@ -12,7 +12,7 @@ on:
 jobs:
   pre:
     name: Initialize
-    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && github.event.sender.login == 'vchirikov') }}
+    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && github.event.sender.login == 'vchirikov' }}
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.gh.outputs.sha }}
