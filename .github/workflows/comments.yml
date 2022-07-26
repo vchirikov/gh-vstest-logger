@@ -34,6 +34,7 @@ jobs:
         id: gh
         run: |
           sha=$(git rev-parse HEAD);
+          echo -e "\033[38;5;113;48;5;16m sha: $sha \033[0m"
           echo "::set-output name=sha::$sha"
 
   unit-tests-workflow-job:
