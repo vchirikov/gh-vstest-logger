@@ -20,7 +20,7 @@
                 "--nologo",
                 "--no-build",
                 "--logger",
-                "\"github;name=unit-tests;CI=1;GITHUB_ACTIONS=1;echo=1\""
+                "\"github;name=unit-tests;CI=1;GITHUB_ACTIONS=1;echo=1;GH_VSTEST_DBG=1\""
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
@@ -28,7 +28,9 @@
             "console": "internalConsole",
             "internalConsoleOptions": "openOnFirstSessionStart",
             "env": {
-                "VSTEST_HOST_DEBUG": "1"
+                "VSTEST_HOST_DEBUG": "1",
+                "GITHUB_SHA": "a20b524a2d7e30dae0eea66786e14bbc76a77663",
+                "GITHUB_TOKEN": "ghp_____________________________________"
             }
         },
         {

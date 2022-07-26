@@ -26,10 +26,16 @@ internal sealed class GitHubApi : IGitHubApi
         IsGitHubActions = _params.CI.asBool() && _params.GITHUB_ACTIONS.asBool();
         _isOctokitEnabled = IsGitHubActions && _params.GITHUB_TOKEN?.Length == 40 && _params.GITHUB_SHA?.Length > 0;
         _api = _isOctokitEnabled
-            ? new(() => api ?? new GitHubClient(
-                new ProductHeaderValue(parameters.GITHUB_REPOSITORY_OWNER ?? "github", ThisAssembly.AssemblyInformationalVersion),
-                new Uri(parameters.GITHUB_API_URL ?? "https://api.github.com/")
-                ) { Credentials = new(token: parameters.GITHUB_TOKEN) })
+            ? new(() => {
+                if (api != null)
+                    return api;
+                var owner = !string.IsNullOrWhiteSpace(_params.GITHUB_REPOSITORY_OWNER) ? _params.GITHUB_REPOSITORY_OWNER : "github";
+                var url = !string.IsNullOrWhiteSpace(_params.GITHUB_API_URL) ? _params.GITHUB_API_URL : "https://api.github.com/";
+                const string version = ThisAssembly.AssemblyInformationalVersion;
+                return new GitHubClient(new ProductHeaderValue(owner, version), new Uri(url)) {
+                    Credentials = new(_params.GITHUB_TOKEN),
+                };
+            })
             : null;
     }
 
@@ -47,8 +53,9 @@ internal sealed class GitHubApi : IGitHubApi
             if (_api == null)
                 throw new("GitHub api client should be initialized");
 
-            var owner = _params.GITHUB_REPOSITORY_OWNER ?? "github";
-            var repository = _params.GITHUB_REPOSITORY.Split('/').LastOrDefault() ?? "unknown";
+            var owner = !string.IsNullOrWhiteSpace(_params.GITHUB_REPOSITORY_OWNER) ? _params.GITHUB_REPOSITORY_OWNER : "github";
+            var ownerRepository = !string.IsNullOrWhiteSpace(_params.GITHUB_REPOSITORY) ? _params.GITHUB_REPOSITORY : "github/unknown";
+            var repository = ownerRepository.Split('/').LastOrDefault();
 
             var newCheckRun = new NewCheckRun(name, _params.GITHUB_SHA) {
                 Output = new NewCheckRunOutput(name, "Starting...") {

@@ -102,6 +102,11 @@ jobs:
           commands: |-
             dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
 
+      - name: Dump steps context
+        run: echo "$STEPS_CONTEXT"
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322

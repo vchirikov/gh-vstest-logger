@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
+using Octokit;
 
 namespace GitHub.VsTest.Logger;
 
@@ -26,7 +27,14 @@ public class GitHubLogger : ITestLoggerWithParameters
     public void Initialize(TestLoggerEvents events, Dictionary<string, string> parameters)
     {
         _params = LoggerParameters.Create(parameters);
-        _gh = new GitHubApi(_params, new ConsoleOutput());
+        IGitHubClient? apiClient = null;
+        if (string.Equals(_params.GITHUB_TOKEN, "ghp_____________________________________", StringComparison.Ordinal))
+        {
+            if (_params.GH_VSTEST_DBG.asBool())
+                Console.WriteLine("[GitHub.VsTest.Logger]: Use the mock of IGitHubClient");
+            apiClient = new MockGitHubClient();
+        }
+        _gh = new GitHubApi(_params, new ConsoleOutput(), apiClient);
         _gh.Output.Echo(_params.echo.asBool());
         if (!_gh.IsGitHubActions)
         {
@@ -41,6 +49,9 @@ public class GitHubLogger : ITestLoggerWithParameters
         events.TestRunStart += (_, args) => OnTestRunStart(args.TestRunCriteria);
         events.TestResult += (_, args) => OnTestResult(args.Result);
         events.TestRunComplete += (_, args) => OnTestRunComplete(args);
+
+        if (_params.GH_VSTEST_DBG.asBool())
+            Console.WriteLine("[GitHub.VsTest.Logger]: Initialize() ended");
     }
 
     /// <summary> Raised when a test run starts. </summary>
@@ -86,6 +97,9 @@ public class GitHubLogger : ITestLoggerWithParameters
     /// <summary> Raised when a test result is received. </summary>
     private void OnTestResult(TestResult result)
     {
+        if (_params.GH_VSTEST_DBG.asBool())
+            Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestResult)}(result:{result.DisplayName})");
+
         if (_status != TestRunStatus.Started)
             throw new($"Unexpected test run status: '{_status}'.");
 
@@ -196,6 +210,8 @@ public class GitHubLogger : ITestLoggerWithParameters
     {
         try
         {
+            if (_params.GH_VSTEST_DBG.asBool())
+                Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestRunComplete)}()");
             if (_status != TestRunStatus.Started)
                 throw new($"Unexpected test run status: '{_status}'.");
             OnTestRunCompleteInternalAsync(results).GetAwaiter().GetResult();

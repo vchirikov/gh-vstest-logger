@@ -36,6 +36,11 @@ internal record class LoggerParameters
     public string name = "dotnet-test-report";
 
     /// <summary>
+    /// Use debug output, default is false (off).
+    /// </summary>
+    public string GH_VSTEST_DBG = "";
+
+    /// <summary>
     /// Use echo of gh commands, default is false (off).
     /// </summary>
     public string echo = "";
