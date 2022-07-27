@@ -59,8 +59,6 @@ jobs:
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo "::set-output name=sha::$sha"
           echo "::add-matcher::./.github/csc.json"
-          echo "##[add-matcher]$GITHUB_WORKSPACE/.github/csc.json"
-          echo "##[add-matcher]./.github/csc.json"
 
       - name: Generate version variables
         id: nbgv
