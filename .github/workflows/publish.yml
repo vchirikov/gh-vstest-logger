@@ -142,7 +142,7 @@ jobs:
           message: |
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
 
-            ${{ steps.tests.outputs.summary }}
+            ${{ fromJSON(steps.tests.outputs.dynamic).summary }}
 
             `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
 
@@ -155,7 +155,7 @@ jobs:
           message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
-            ${{ steps.tests.outputs.summary }}
+            ${{ fromJSON(steps.tests.outputs.dynamic).summary }}
 
             <details open> <summary> Tests output </summary>
 
