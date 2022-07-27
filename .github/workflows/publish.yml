@@ -46,7 +46,6 @@ jobs:
     name: Publish
     runs-on: ubuntu-latest
     steps:
-
       - name: git checkout / on 'workflow_call'
         if: ${{ inputs.ref != '' }}
         uses: actions/checkout@v3
@@ -168,7 +167,7 @@ jobs:
         uses: vchirikov/.github/shell-and-report-action@master
         with:
           commands: |-
-            dotnet pack --no-restore --nologo -c Release -p:GenerateFullPaths=true /clp:NoSummary dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
+            dotnet pack --no-restore --nologo -c Release -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
             dotnet nuget push artifacts/nupkg/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }}  --source https://api.nuget.org/v3/index.json --force-english-output --timeout 20 --skip-duplicate | sed -E 's/^(.*?)(error)(.*)$/- \1\2\3/g'
           report-success: |-
             🎉 Version `${{ steps.nbgv.outputs.SemVer2 }}` was successful published! `(〃￣︶￣)人(￣︶￣〃)`
