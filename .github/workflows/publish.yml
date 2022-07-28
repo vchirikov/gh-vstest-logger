@@ -40,6 +40,8 @@ env:
   DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "false"
   POWERSHELL_TELEMETRY_OPTOUT: 1
   POWERSHELL_UPDATECHECK_OPTOUT: 1
+  NUGET_CERT_REVOCATION_MODE: offline
+  MSBUILDDISABLENODEREUSE: 1
 jobs:
   publish:
     if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'yes') || github.event_name == 'workflow_call' }}
