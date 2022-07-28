@@ -77,7 +77,7 @@ internal class MockCheckRunsClient : ICheckRunsClient
         );
         _checkRun = new CheckRun(
             1337,
-            "a20b524a2d7e30dae0eea66786e14bbc76a77663",
+            "89fcdcba600c04029abe9ba54e99dca8b3e4732b",
             null!,
             null!,
             null!,
