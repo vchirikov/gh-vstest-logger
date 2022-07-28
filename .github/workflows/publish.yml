@@ -128,7 +128,7 @@ jobs:
         uses: vchirikov/.github/shell-action@master
         with:
           commands: |-
-            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
+            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
 
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}
@@ -192,7 +192,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: "refs/tags/${{ steps.nbgv.outputs.SemVer2 }}",
-              sha: context.sha
+              sha: "${{ steps.gh.outputs.sha }}"
             })
 
       - name: Setup git-chglog
@@ -208,17 +208,12 @@ jobs:
       - name: Generate changelog
         if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         id: changelog
-        shell: bash --noprofile --norc {0}
-        run: |
-          echo "Creating change log for tag: ${{ steps.nbgv.outputs.SemVer2 }}"
-          git tag ${{ steps.nbgv.outputs.SemVer2 }}
-          exec 5>&1
-          out=$(git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }} 2>&1 | tee >(cat - >&5) ; exit ${PIPESTATUS[0]} )
-          exit_code=$?
-          out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
-          echo "::set-output name=out::$out"
-          exec 5>&-
-          exit $exit_code
+        uses: vchirikov/.github/shell-action@master
+        with:
+          commands: |-
+            echo "Creating change log for tag: ${{ steps.nbgv.outputs.SemVer2 }}"
+            git tag ${{ steps.nbgv.outputs.SemVer2 }}
+            git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }}
 
       - name: Create Release
         if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
@@ -230,6 +225,69 @@ jobs:
           tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
           release_name: ${{ steps.nbgv.outputs.SemVer2 }}
           body: ${{ steps.changelog.outputs.out }}
+
+      - name: Auto-merge
+        uses: vchirikov/.github/shell-action@master
+        continue-on-error: true
+        id: merge
+        with:
+          commands: |-
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --global merge.conflictstyle zdiff3
+            git switch master
+            git merge --commit --stat --no-progress --no-edit ${{ steps.gh.outputs.sha }}
+
+      - name: Report merge success
+        if: ${{ steps.merge.outcome == 'success' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+
+            <details> <summary> Auto-merged into master. 🦾 </summary>
+
+            ```diff
+            ${{ steps.merge.outputs.out }}
+            ```
+
+            </details>
+
+      - name: Create PR if merge is failed
+        if: ${{ steps.merge.outcome == 'failure' }}
+        uses: vchirikov/.github/shell-action@master
+        continue-on-error: true
+        id: gh-pr
+        with:
+          commands: |-
+            git switch -c merge/${{ steps.gh.outputs.sha }}
+            git add .
+            git commit -m "Merge ${{ steps.gh.outputs.sha }} with conflicts"
+            git push -u
+            gh pr create --fill --label auto-merge
+            gh pr merge --auto --squash
+
+      - name: Report merge failed
+        if: ${{ steps.merge.outcome == 'failure' || steps.gh-pr.outcome == 'failure' }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            ❌ Auto-merge failed. 😟
+
+            <details open> <summary> git merge output </summary>
+
+            ```diff
+            ${{ steps.merge.outputs.out }}
+            ```
+
+            ```diff
+            ${{ steps.gh-pr.outputs.out }}
+            ```
+
+            </details>
 
       - name: Report cancellation
         if: ${{ cancelled() }}
