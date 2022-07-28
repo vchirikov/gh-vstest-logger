@@ -238,6 +238,7 @@ jobs:
             git config --global merge.conflictstyle zdiff3
             git switch master
             git merge --commit --stat --no-progress --no-edit ${{ steps.gh.outputs.sha }}
+            git push
 
       - name: Report merge success
         if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'success' }}
