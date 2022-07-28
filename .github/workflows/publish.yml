@@ -228,6 +228,7 @@ jobs:
 
       - name: Auto-merge
         uses: vchirikov/.github/shell-action@master
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
         continue-on-error: true
         id: merge
         with:
@@ -239,7 +240,7 @@ jobs:
             git merge --commit --stat --no-progress --no-edit ${{ steps.gh.outputs.sha }}
 
       - name: Report merge success
-        if: ${{ steps.merge.outcome == 'success' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'success' }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -255,7 +256,7 @@ jobs:
             </details>
 
       - name: Create PR if merge is failed
-        if: ${{ steps.merge.outcome == 'failure' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'failure' }}
         uses: vchirikov/.github/shell-action@master
         continue-on-error: true
         id: gh-pr
@@ -269,7 +270,7 @@ jobs:
             gh pr merge --auto --squash
 
       - name: Report merge failed
-        if: ${{ steps.merge.outcome == 'failure' || steps.gh-pr.outcome == 'failure' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && (steps.merge.outcome == 'failure' || steps.gh-pr.outcome == 'failure') }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
