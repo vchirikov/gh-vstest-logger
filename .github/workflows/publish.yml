@@ -130,7 +130,7 @@ jobs:
         uses: vchirikov/.github/shell-action@master
         with:
           commands: |-
-            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g'
+            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g'
 
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}
