@@ -12,7 +12,7 @@ on:
       ref:
         required: true
         type: string
-        description: GITHUB_SHA ref to checkout and to link annotations to
+        description: git ref to checkout and to link annotations to
         default: ""
   workflow_dispatch:
 
@@ -56,10 +56,16 @@ jobs:
         id: gh
         run: |
           env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> .env
           sha=$(git rev-parse HEAD)
+          branch=$(git rev-parse --abbrev-ref HEAD)
           echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
+          echo "GITHUB_SHA=$sha" >> .env
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
+          echo "MSBUILDDISABLENODEREUSE=1" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo "::set-output name=sha::$sha"
+          echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
 
       - name: Generate version variables

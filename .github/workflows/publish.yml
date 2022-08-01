@@ -12,7 +12,7 @@ on:
       ref:
         required: true
         type: string
-        description: GITHUB_SHA ref to checkout and to link annotations to
+        description: git ref to checkout and to link annotations to
         default: ""
   workflow_dispatch:
     inputs:
@@ -44,7 +44,7 @@ env:
   MSBUILDDISABLENODEREUSE: 1
 jobs:
   publish:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'yes') || github.event_name == 'workflow_call' }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'yes') || github.event_name == 'issue_comment' }}
     name: Publish
     runs-on: ubuntu-latest
     steps:
@@ -68,10 +68,17 @@ jobs:
         id: gh
         run: |
           env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> .env
           sha=$(git rev-parse HEAD)
+          branch=$(git rev-parse --abbrev-ref HEAD)
           echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
+          echo "GITHUB_SHA=$sha" >> .env
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
+          echo "MSBUILDDISABLENODEREUSE=1" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
+          echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo "::set-output name=sha::$sha"
+          echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
 
       - name: Generate version variables
@@ -235,11 +242,12 @@ jobs:
         id: merge
         with:
           commands: |-
+            git config --global merge.conflictstyle zdiff3
+            git config --global --add safe.directory $GITHUB_WORKSPACE
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git config --global merge.conflictstyle zdiff3
             git switch master
-            git merge --commit --stat --no-progress --no-edit ${{ steps.gh.outputs.sha }}
+            git merge --commit --stat --no-progress --no-edit origin/${{ steps.gh.outputs.branch }}
             git push
 
       - name: Report merge success
@@ -265,10 +273,10 @@ jobs:
         id: gh-pr
         with:
           commands: |-
-            git switch -c merge/${{ steps.gh.outputs.sha }}
+            git switch -c merge/${{ steps.gh.outputs.branch }}
             git add .
-            git commit -m "Merge ${{ steps.gh.outputs.sha }} with conflicts"
-            git push -u
+            git commit -m "Merge ${{ steps.gh.outputs.branch }} with conflicts"
+            git push --set-upstream origin
             gh pr create --fill --label auto-merge
             gh pr merge --auto --squash
 

@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.gh.outputs.sha }}
+      branch: ${{ steps.gh.outputs.branch }}
     steps:
       - name: git checkout
         uses: actions/checkout@v3
@@ -30,12 +31,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: git rev-parse HEAD
+      - name: git rev-parse
         id: gh
         run: |
           sha=$(git rev-parse HEAD);
+          branch=$(git rev-parse --abbrev-ref HEAD);
           echo -e "\033[38;5;113;48;5;16m sha: $sha \033[0m"
+          echo -e "\033[38;5;113;48;5;16m branch: $branch \033[0m"
           echo "::set-output name=sha::$sha"
+          echo "::set-output name=branch::$branch"
 
   unit-tests-workflow-job:
     name: /unit-tests
@@ -44,7 +48,7 @@ jobs:
     secrets: inherit
     uses: ./.github/workflows/tests.yml
     with:
-      ref: ${{ needs.pre.outputs.sha }}
+      ref: ${{ needs.pre.outputs.branch }}
 
   publish-workflow-job:
     name: /publish
@@ -53,4 +57,4 @@ jobs:
     secrets: inherit
     uses: ./.github/workflows/publish.yml
     with:
-      ref: ${{ needs.pre.outputs.sha }}
+      ref: ${{ needs.pre.outputs.branch }}
