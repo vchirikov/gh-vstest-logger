@@ -64,19 +64,23 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Save & forward default env variables
+      - name: Forward env variables & checkout fixes
         id: gh
         run: |
-          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> $GITHUB_ENV
-          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match >> .env
+          echo "MSBUILDDISABLENODEREUSE=1" >> .env
+          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match | grep -E GITHUB_REF= --invert-match >> $GITHUB_ENV
+          env | grep -E '^(GITHUB_|CI)' | grep -E GITHUB_SHA= --invert-match | grep -E GITHUB_REF= --invert-match >> .env
           sha=$(git rev-parse HEAD)
-          branch=$(git rev-parse --abbrev-ref HEAD)
           echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
           echo "GITHUB_SHA=$sha" >> .env
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          echo "GITHUB_REF=refs/heads/$branch" >> $GITHUB_ENV
+          echo "GITHUB_REF=refs/heads/$branch" >> .env
           echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
-          echo "MSBUILDDISABLENODEREUSE=1" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
+          echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
+          echo -e "\033[38;5;99;5;16m.git/HEAD:\033[0m"
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"

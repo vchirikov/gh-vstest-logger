@@ -13,5 +13,8 @@
   },
   "release": {
     "branchName": "release/v{version}"
+  },
+  "nugetPackageVersion": {
+    "semVer": 2
   }
 }
