@@ -64,20 +64,22 @@ jobs:
           branch=$(git rev-parse --abbrev-ref HEAD)
           echo "GITHUB_REF=refs/heads/$branch" >> $GITHUB_ENV
           echo "GITHUB_REF=refs/heads/$branch" >> .env
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
-          echo -e "\033[38;5;99;5;16m.git/HEAD:\033[0m"
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
 
-      - name: Generate version variables
+      - name: Generate version
         id: nbgv
-        uses: dotnet/nbgv@master
+        uses: dotnet/nbgv@addFeed
         with:
           setAllVars: true
+          toolVersion: 3.6.20-alpha-gaf2d6026c0
+          toolFeed: https://pkgs.dev.azure.com/andrewarnott/OSS/_packaging/PublicCI/nuget/v3/index.json
+        env:
+          IGNORE_GITHUB_REF: true
 
       - name: NuGet cache restore
         uses: actions/cache@v3
