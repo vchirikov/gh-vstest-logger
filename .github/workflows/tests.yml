@@ -67,6 +67,7 @@ jobs:
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
+          cat .git/HEAD
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
