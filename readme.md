@@ -33,7 +33,7 @@ Because technologies must be shared without the idiotic crap in their licenses.
 
 ![Example of PR comment success](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment-success.png)
 
-![Example of PR comment failure](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment-failre.png)
+![Example of PR comment failure](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment-failure.png)
 
 ## Usage:
 
