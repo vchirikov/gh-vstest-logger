@@ -19,12 +19,21 @@ Because technologies must be shared without the idiotic crap in their licenses.
 ![IT commune](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/bunny.png)
 
 
-## Screenshots (old)
+## Screenshots 
+
+#### Example of an annotation
 
 ![Example of PR annotation](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-annotation.png)  
 
-![Example of PR comment](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment.png)
+#### Example of a Github Workflow job summary
 
+![Example of Job summary](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/job-summary-example.png)
+
+#### Test run PR comment on success or failure
+
+![Example of PR comment success](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment-success.png)
+
+![Example of PR comment failure](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-comment-failre.png)
 
 ## Usage:
 
@@ -46,7 +55,7 @@ and add `name` & `GITHUB_TOKEN`. All parameters are defined [here](./src/dotnet/
 
 After test run the logger produce a [GitHub Workflow job summary](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary).
 
-You can also view [how we use it in our workflows](./.github/workflows/unit-tests.yml).
+You also can use the tests summary as content of a PR comment. As a reference you can view [how we use it in our workflows](./.github/workflows/unit-tests.yml).
 
 ### Additional
 
