@@ -11,7 +11,6 @@ internal sealed class OctokitGitHubAnnotationWriter : IGitHubAnnotationWriter
     private readonly string _repository;
     private bool _hasError;
 
-
     public OctokitGitHubAnnotationWriter(CheckRun checkRun, IGitHubClient api, string owner, string repository)
     {
         _checkRun = checkRun;

@@ -38,6 +38,7 @@
     <Using Include="System.Globalization" />
     <Using Include="System.FormattableString" Static="True" />
     <Using Include="System.Linq" />
+    <Using Include="System.Text" />
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />

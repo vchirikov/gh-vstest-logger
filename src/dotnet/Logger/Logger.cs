@@ -1,4 +1,5 @@
 using System.Text;
+using System.Xml.Linq;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using Octokit;
@@ -17,6 +18,10 @@ public class GitHubLogger : ITestLoggerWithParameters
 
     private LoggerParameters _params = null!;
     private GitHubApi _gh = null!;
+    private TestRunSummaryGenerator _summaryGenerator = null!;
+    private TestRunSummaryWriter _summaryWriter = null!;
+    private string? _testRunName;
+    private string? _testRunFramework;
     private IGitHubAnnotationWriter? _annotationWriter;
     private TestRunStatus _status = TestRunStatus.NotRunning;
     private readonly SemaphoreSlim _locker = new(1,1);
@@ -46,6 +51,18 @@ public class GitHubLogger : ITestLoggerWithParameters
             _gh.Output.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
             return;
         }
+
+        _summaryGenerator = new TestRunSummaryGenerator(
+            _params.GITHUB_SERVER_URL,
+            _params.GITHUB_REPOSITORY,
+            _params.GITHUB_WORKSPACE,
+            _params.GITHUB_SHA
+        );
+        var summaryFile = !string.IsNullOrWhiteSpace(_params.GITHUB_STEP_SUMMARY)
+            ? _params.GITHUB_STEP_SUMMARY
+            : "test-run.md";
+        _summaryWriter = new TestRunSummaryWriter(summaryFile);
+
         events.TestRunStart += (_, args) => OnTestRunStart(args.TestRunCriteria);
         events.TestResult += (_, args) => OnTestResult(args.Result);
         events.TestRunComplete += (_, args) => OnTestRunComplete(args);
@@ -84,6 +101,17 @@ public class GitHubLogger : ITestLoggerWithParameters
             try
             {
                 string testRunName =$"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}";
+                var sources = testRunCriteria?.Sources?.FirstOrDefault();
+                _testRunName = !string.IsNullOrWhiteSpace(sources)
+                    ? Path.GetFileNameWithoutExtension(sources)
+                    : null;
+
+                _testRunFramework = !string.IsNullOrWhiteSpace(testRunCriteria?.TestRunSettings)
+                    ? (string?)XElement.Parse(testRunCriteria.TestRunSettings)
+                        .Element("RunConfiguration")?
+                        .Element("TargetFrameworkVersion")
+                    : null;
+
                 _annotationWriter = await _gh.CreateAnnotationWriterAsync(testRunName).ConfigureAwait(false);
                 _status = TestRunStatus.Started;
             }
@@ -223,31 +251,28 @@ public class GitHubLogger : ITestLoggerWithParameters
             _gh.Output.Error(ex.ToString());
         }
 
-        // could be sync, but for the future use let it be async (for file io/rest calls)
         async Task OnTestRunCompleteInternalAsync(TestRunCompleteEventArgs results)
         {
-            string summary = "";
             try
             {
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
-                var sb = new StringBuilder(1024);
 
-                sb.Append("**Total tests**: ").Append(results.TestRunStatistics.ExecutedTests).AppendLine("  ");
+                var summary = _summaryGenerator.Generate(
+                    name: _params.name,
+                    suite: _testRunName,
+                    framework: _testRunFramework,
+                    passed: results.TestRunStatistics.Stats[TestOutcome.Passed],
+                    failed: results.TestRunStatistics.Stats[TestOutcome.Failed],
+                    skipped: results.TestRunStatistics.Stats[TestOutcome.Skipped],
+                    total: results.TestRunStatistics.ExecutedTests,
+                    elapsed: results.ElapsedTimeInRunningTests,
+                    testResults: _testResults.Keys
+                );
 
-                foreach (var stat in results.TestRunStatistics.Stats)
-                {
-                    sb.Append(stat.Key switch {
-                        TestOutcome.None => ":question:",
-                        TestOutcome.Passed => ":white_check_mark:",
-                        TestOutcome.Failed => ":x:",
-                        TestOutcome.Skipped => ":brown_circle:",
-                        TestOutcome.NotFound => ":skull_and_crossbones:",
-                        _ => ":skull:"
-                    }).Append(" **").Append(stat.Key).Append("**: ").Append(stat.Value).AppendLine();
-                }
-                sb.AppendLine();
-                sb.Append("⌚ **Total time**: ").AppendLine(FormatTimeSpan(results.ElapsedTimeInRunningTests));
-                summary = sb.ToString();
+                // we might have several msbuild processes (per testRun),
+                // so we can't just print summary into gh action output value (bc we will override the value)
+                // thus we must use a file to store results and work with contention between msbuilds
+                await _summaryWriter.WriteAsync(summary).ConfigureAwait(false);
             }
             finally
             {
@@ -256,7 +281,6 @@ public class GitHubLogger : ITestLoggerWithParameters
                     await _annotationWriter.DisposeAsync().ConfigureAwait(false);
                     _annotationWriter = null;
                 }
-                _gh.OutputVariable("summary", summary);
                 if (await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 {
                     _status = TestRunStatus.Finished;
@@ -268,10 +292,6 @@ public class GitHubLogger : ITestLoggerWithParameters
                 }
             }
         }
-
-        // bad omnisharp auto-formatting (?)
-        static string FormatTimeSpan(TimeSpan timeSpan)
-            => timeSpan switch { { TotalDays: var days } when days >= 1 => Invariant($"{timeSpan.TotalDays:0.0000} days"), { TotalHours: var hours } when hours >= 1 => Invariant($"{timeSpan.TotalHours:0.0000} hours"), { TotalMinutes: var min } when min >= 1 => Invariant($"{timeSpan.TotalMinutes:0.0000} minutes"), { TotalSeconds: var sec } => Invariant($"{timeSpan.TotalSeconds:0.0000} seconds") };
     }
 
     public void Initialize(TestLoggerEvents events, string testRunDirectory)
