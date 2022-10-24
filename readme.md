@@ -19,7 +19,7 @@ Because technologies must be shared without the idiotic crap in their licenses.
 ![IT commune](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/bunny.png)
 
 
-## Screenshots
+## Screenshots (old)
 
 ![Example of PR annotation](https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/img/pr-annotation.png)  
 
@@ -44,7 +44,7 @@ Parameters can be set with the command line args, or through environment variabl
 We took all default variables from default github actions [environment variables](https://docs.github.com/en/actions/learn-github-actions/environment-variables)
 and add `name` & `GITHUB_TOKEN`. All parameters are defined [here](./src/dotnet/Logger/LoggerParameters.cs).  
 
-After test run the logger produce a GitHub Workflow step variable `summary`, which you can use in your workflow.  
+After test run the logger produce a [GitHub Workflow job summary](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary).
 
 You can also view [how we use it in our workflows](./.github/workflows/unit-tests.yml).
 
