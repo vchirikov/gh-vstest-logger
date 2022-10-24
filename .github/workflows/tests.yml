@@ -62,14 +62,14 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
           echo "GITHUB_SHA=$sha" >> .env
-          branch=$(git rev-parse --abbrev-ref HEAD)
+          branch=$(git rev-parse --abbrev-ref HEAD)``
           echo "GITHUB_REF=refs/heads/$branch" >> $GITHUB_ENV
           echo "GITHUB_REF=refs/heads/$branch" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
-          echo "::set-output name=sha::$sha"
-          echo "::set-output name=branch::$branch"
+          echo "sha=$sha" >> $GITHUB_OUTPUT
+          echo "branch=$branch" >> $GITHUB_OUTPUT
           echo "::add-matcher::./.github/csc.json"
 
       # we can use [`IGNORE_GITHUB_REF: true`](https://github.com/dotnet/nbgv/issues/50) with default dotnet/nbgv@master
@@ -149,11 +149,19 @@ jobs:
             </details>
 
       - name: dotnet test
+        shell: bash --noprofile --norc {0}
         id: tests
-        uses: vchirikov/.github/shell-action@master
-        with:
-          commands: |-
-            dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g'
+        run: |-
+          exec 4>&1
+          out=$(set -o pipefail; dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
+          exit_code=$?
+          out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
+          echo "out=$out" >> $GITHUB_OUTPUT
+          summary=$(cat $GITHUB_STEP_SUMMARY)
+          summary="${summary//'%'/'%25'}" ; summary="${summary//$'\n'/'%0A'}" ; summary="${summary//$'\r'/'%0D'}"
+          echo "summary=$summary" >> $GITHUB_OUTPUT
+          exec 4>&- || true
+          exit $exit_code
 
       - name: Report tests success
         if: ${{ steps.tests.outcome == 'success' }}
@@ -164,7 +172,7 @@ jobs:
           message: |
             ✅ Running unit tests on `${{ steps.nbgv.outputs.SemVer2 }}` version was successful!
 
-            ${{ fromJSON(steps.tests.outputs.dynamic).summary }}
+            ${{ steps.tests.outputs.summary }}
 
             `(•_•)          ( •_•)>⌐■-■          (⌐■_■)`
 
@@ -177,7 +185,7 @@ jobs:
           message: |
             ❌ Tests failed. `(╯°□°)╯︵ ┻━┻`
 
-            ${{ fromJSON(steps.tests.outputs.dynamic).summary }}
+            ${{ steps.tests.outputs.summary }}
 
             <details open> <summary> Tests output </summary>
 
