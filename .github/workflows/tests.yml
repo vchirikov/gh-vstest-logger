@@ -1,6 +1,6 @@
 name: Tests
 concurrency:
-  group: tests-${{ github.ref }}-${{ github.event_name }}
+  group: ${{ github.workflow }}-${{ inputs.ref || github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 permissions: write-all
 defaults:
@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
 
 env:
+  WORKFLOW_STATUS_CHECK_NAME: Tests
   DOCKER_BUILDKIT: 1
   DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: "true"
   DOTNET_CLI_UI_LANGUAGE: en-US
@@ -67,20 +68,58 @@ jobs:
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
-          cat .git/HEAD
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
 
+      # we can use [`IGNORE_GITHUB_REF: true`](https://github.com/dotnet/nbgv/issues/50) with default dotnet/nbgv@master
+      # after 3.6 nbgv release and the gh runner will have it
       - name: Generate version
         id: nbgv
-        uses: dotnet/nbgv@addFeed
+        uses: actions/github-script@v6
         with:
-          setAllVars: true
-          toolVersion: 3.6.20-alpha-gaf2d6026c0
-          toolFeed: https://pkgs.dev.azure.com/andrewarnott/OSS/_packaging/PublicCI/nuget/v3/index.json
-        env:
-          IGNORE_GITHUB_REF: true
+          script: |
+            const path = require('path');
+            const os = require('os');
+            process.env.GITHUB_REF='refs/heads/${{ steps.gh.outputs.branch }}';
+            process.env.GITHUB_SHA='${{ steps.gh.outputs.sha }}';
+            try {
+              // install nbgv isn' required
+              // the image includes nbgv [actions/runner-images](https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#net-tools)
+
+              // collect a JSON string of all the version properties.
+              let versionJson = '';
+              await exec.exec('nbgv', ['get-version', '-f', 'json'], { listeners: { stdout: (data) => { versionJson += data.toString() } } });
+              core.setOutput('versionJson', versionJson);
+
+              // break up the JSON into individual outputs.
+              const versionProperties = JSON.parse(versionJson);
+              for (let name in versionProperties.CloudBuildAllVars) {
+                // Trim off the leading NBGV_
+                core.setOutput(name.substring(5), versionProperties.CloudBuildAllVars[name]);
+              }
+
+              await exec.exec('nbgv', ['cloud', '-a']);
+            }
+            catch (error) {
+              core.setFailed(error.message);
+            }
+
+      - name: Set status check - pending
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          debug: false
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "pending",
+              sha: "${{ steps.gh.outputs.sha }}",
+              context: process.env.WORKFLOW_STATUS_CHECK_NAME ,
+              description: "Waiting for '${{ github.workflow }}' workflow completion",
+              target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            });
 
       - name: NuGet cache restore
         uses: actions/cache@v3
@@ -155,7 +194,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allow-repeats: true
           message: |
-            ⚠️ Test run cancelled. `(ง •_•)ง`
+            ⚠️ Cancelled. `(ง •_•)ง`
 
       - name: Report failure
         if: ${{ failure() && steps.tests.outcome != 'failure' && steps.build.outcome != 'failure'}}
@@ -165,3 +204,23 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ❌ Failed. `( ˘︹˘ )`
+
+      - name: Set status check - success / failure / error
+        if: ${{ always() }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          debug: false
+          script: |
+            const status = "${{ job.status }}";
+            const state = status === 'cancelled' ? 'error' : status;
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: state,
+              sha: "${{ steps.gh.outputs.sha }}",
+              context: process.env.WORKFLOW_STATUS_CHECK_NAME ,
+              description: "",
+              target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            });

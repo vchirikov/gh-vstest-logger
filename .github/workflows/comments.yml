@@ -12,7 +12,7 @@ on:
 jobs:
   pre:
     name: Initialize
-    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && github.event.sender.login == 'vchirikov' }}
+    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.html_url, '/pull/') && github.event.sender.login == 'vchirikov' && ( startsWith(github.event.comment.body, '/unit-test') || startsWith(github.event.comment.body, '/publish') ) }}
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.gh.outputs.sha }}
@@ -40,6 +40,15 @@ jobs:
           echo -e "\033[38;5;113;48;5;16m branch: $branch \033[0m"
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
+
+      - name: Report failed
+        if: ${{ failure() }}
+        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+          message: |
+            💢 `git checkout` is failed. Looks like you deleted the branch. `ಠ╭╮ಠ`
 
   unit-tests-workflow-job:
     name: /unit-tests

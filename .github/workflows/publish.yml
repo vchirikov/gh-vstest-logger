@@ -1,6 +1,6 @@
 name: Publish
 concurrency:
-  group: publish-${{ github.ref }}-${{ github.event_name }}
+  group: ${{ github.workflow }}-${{ inputs.ref || github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
 permissions: write-all
 defaults:
@@ -80,33 +80,59 @@ jobs:
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
           echo -e "\033[38;5;99;5;16mbranch: $branch\033[0m"
           echo -e "\033[38;5;99;5;16minputs.ref: ${{ inputs.ref }}\033[0m"
-          echo -e "\033[38;5;99;5;16m.git/HEAD:\033[0m"
           echo "::set-output name=sha::$sha"
           echo "::set-output name=branch::$branch"
           echo "::add-matcher::./.github/csc.json"
 
-      - name: Generate version variables
+      # we can use [`IGNORE_GITHUB_REF: true`](https://github.com/dotnet/nbgv/issues/50) with default dotnet/nbgv@master
+      # after 3.6 nbgv release and the gh runner will have it
+      - name: Generate version
         id: nbgv
-        uses: dotnet/nbgv@master
+        uses: actions/github-script@v6
         with:
-          setAllVars: true
+          script: |
+            const path = require('path');
+            const os = require('os');
+            process.env.GITHUB_REF='refs/heads/${{ steps.gh.outputs.branch }}';
+            process.env.GITHUB_SHA='${{ steps.gh.outputs.sha }}';
+            try {
+              // install nbgv isn' required
+              // the image includes nbgv [actions/runner-images](https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#net-tools)
+
+              // collect a JSON string of all the version properties.
+              let versionJson = '';
+              await exec.exec('nbgv', ['get-version', '-f', 'json'], { listeners: { stdout: (data) => { versionJson += data.toString() } } });
+              core.setOutput('versionJson', versionJson);
+
+              // break up the JSON into individual outputs.
+              const versionProperties = JSON.parse(versionJson);
+              for (let name in versionProperties.CloudBuildAllVars) {
+                // Trim off the leading NBGV_
+                core.setOutput(name.substring(5), versionProperties.CloudBuildAllVars[name]);
+              }
+
+              await exec.exec('nbgv', ['cloud', '-a']);
+            }
+            catch (error) {
+              core.setFailed(error.message);
+            }
 
       - name: Verify the public branch name matches version.json
-        if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && github.ref != 'refs/heads/master' }}
+        if: ${{ github.event_name == 'push' && steps.nbgv.outputs.PublicRelease == 'True' && endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true && steps.gh.outputs.branch != 'master' }}
         run: |
-          echo "::error::The branch name ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
+          echo "::error::The branch name ${{ steps.gh.outputs.branch }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
 
       - name: Verify that non-public branch has a prerelease suffix in version.json
         if: ${{ steps.nbgv.outputs.PublicRelease == 'False' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         run: |
-          echo "::error::The non-public branch ${{ github.ref }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
+          echo "::error::The non-public branch ${{ steps.gh.outputs.branch }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
 
       - name: Verify that master branch has a prerelease suffix in version.json
-        if: ${{ github.ref == 'refs/heads/master' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
+        if: ${{ steps.gh.outputs.branch == 'master' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         run: |
-          echo "::error::The master branch ${{ github.ref }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
+          echo "::error::The master branch ${{ steps.gh.outputs.branch }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
 
       - name: NuGet cache restore
@@ -196,7 +222,7 @@ jobs:
             </details>
 
       - name: Create tag
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         uses: actions/github-script@v6
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -209,7 +235,7 @@ jobs:
             })
 
       - name: Setup git-chglog
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         working-directory: /tmp
         run: |
           wget https://github.com/git-chglog/git-chglog/releases/download/v${VERSION}/git-chglog_${VERSION}_linux_amd64.tar.gz
@@ -219,7 +245,7 @@ jobs:
           VERSION: "0.15.1"
 
       - name: Generate changelog
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         id: changelog
         uses: vchirikov/.github/shell-action@master
         with:
@@ -229,7 +255,7 @@ jobs:
             git-chglog --config .github/git-chglog/config.yml ${{ steps.nbgv.outputs.SemVer2 }}
 
       - name: Create Release
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
+        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen == '' }}
         uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -239,70 +265,71 @@ jobs:
           release_name: ${{ steps.nbgv.outputs.SemVer2 }}
           body: ${{ steps.changelog.outputs.out }}
 
-      - name: Auto-merge
-        uses: vchirikov/.github/shell-action@master
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' }}
+      - name: Create merge branch
+        if: ${{ steps.gh.outputs.branch != 'master' && steps.nbgv.outputs.PublicRelease == 'True' }}
+        shell: bash --noprofile --norc {0}
         continue-on-error: true
         id: merge
-        with:
-          commands: |-
-            git config --global merge.conflictstyle zdiff3
-            git config --global --add safe.directory $GITHUB_WORKSPACE
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git switch master
-            git merge --commit --stat --no-progress --no-edit origin/${{ steps.gh.outputs.branch }}
-            git push
+        env:
+          # expires each year
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+        run: |-
+          git config --global init.defaultBranch master
+          git config --global push.autoSetupRemote true
+          git config --global push.default current
+          git config --global merge.ff true
+          git config --global merge.conflictstyle zdiff3
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          git config --global user.name "vchirikov"
+          git config --global user.email "40987940+vchirikov@users.noreply.github.com"
+          git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git
+          git fetch origin master
+          git reset --hard && git clean -xdf
+          sha="${{ steps.gh.outputs.sha }}" ; sha_compact="${sha:0:8}" ; date=$(date '+%Y-%m-%d')
+          merge_branch="merge/$date/${{ steps.gh.outputs.branch }}/$sha_compact"
+          echo -e "\033[38;5;99;5;16mmerge_branch: $merge_branch\033[0m"
+          git switch master && git switch -c "$merge_branch"
+          branch_url="https://github.com/${GITHUB_REPOSITORY}/tree/$merge_branch"
+          branch_url="${branch_url//'%'/'%25'}" ; branch_url="${branch_url//$'\n'/'%0A'}" ; branch_url="${branch_url//$'\r'/'%0D'}"
+          echo "::set-output name=branch_url::$branch_url"
+          exec 4>&1
+          git_merge=$(set -o pipefail; git merge --commit --stat --no-progress --no-edit origin/${{ steps.gh.outputs.branch }} 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]}) || ( git merge --quit && git add . && git commit -m "Merge ${{ steps.gh.outputs.branch }} with conflicts. [skip ci]" )
+          git push origin "$merge_branch"
+          pr_url=$(set -o pipefail; gh pr create --fill --reviewer "${{ github.actor }}" | grep '^https://github.com/' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
+          gh pr edit "$pr_url" --title "[$date] Auto-merge '${{ steps.gh.outputs.branch }}' / $sha_compact"
+          pr_url="${pr_url//'%'/'%25'}" ; pr_url="${pr_url//$'\n'/'%0A'}" ; pr_url="${pr_url//$'\r'/'%0D'}"
+          git_merge="${git_merge//'%'/'%25'}" ; git_merge="${git_merge//$'\n'/'%0A'}" ; git_merge="${git_merge//$'\r'/'%0D'}"
+          echo "::set-output name=pr_url::$pr_url"
+          echo "::set-output name=git_merge::$git_merge"
+          exec 4>&- || true
 
-      - name: Report merge success
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'success' }}
-        uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
-          message: |
-
-            <details> <summary> Auto-merged into master. 🦾 </summary>
-
-            ```diff
-            ${{ steps.merge.outputs.out }}
-            ```
-
-            </details>
-
-      - name: Create PR if merge is failed
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'failure' }}
-        uses: vchirikov/.github/shell-action@master
+      - name: Approve PR
+        if: ${{ steps.gh.outputs.branch != 'master' && steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outcome == 'success' && steps.merge.outputs.pr_url }}
         continue-on-error: true
-        id: gh-pr
-        with:
-          commands: |-
-            git switch -c merge/${{ steps.gh.outputs.branch }}
-            git add .
-            git commit -m "Merge ${{ steps.gh.outputs.branch }} with conflicts"
-            git push --set-upstream origin
-            gh pr create --fill --label auto-merge
-            gh pr merge --auto --squash
+        id: approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pr_url: ${{ steps.merge.outputs.pr_url }}
+        run: |-
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git
+          (gh pr review --approve "$pr_url" && gh pr merge --auto --merge "$pr_url") || true
 
-      - name: Report merge failed
-        if: ${{ steps.nbgv.outputs.PublicRelease == 'True' && (steps.merge.outcome == 'failure' || steps.gh-pr.outcome == 'failure') }}
+      - name: Report auto-merge
+        if: ${{ steps.gh.outputs.branch != 'master' && steps.nbgv.outputs.PublicRelease == 'True' && steps.merge.outputs.branch_url }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allow-repeats: true
           message: |
-            ❌ Auto-merge failed. 😟
+            🔖 [Auto-merge PR](${{ steps.merge.outputs.pr_url || steps.merge.outputs.branch_url }})
 
-            <details open> <summary> git merge output </summary>
-
-            ```diff
-            ${{ steps.merge.outputs.out }}
-            ```
+            <details> <summary> git merge output </summary>
 
             ```diff
-            ${{ steps.gh-pr.outputs.out }}
+            ${{ steps.merge.outputs.git_merge }}
             ```
-
             </details>
 
       - name: Report cancellation
@@ -312,10 +339,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allow-repeats: true
           message: |
-            ⚠️ Test run cancelled. `(ง •_•)ง`
+            ⚠️ Cancelled. `(ง •_•)ง`
 
       - name: Report failure
-        if: ${{ failure() && steps.build.outcome != 'failure' && steps.tests.outcome != 'failure' && steps.publish.outcome != 'failure' }}
+        if: ${{ failure() && steps.tests.outcome != 'failure' && steps.build.outcome != 'failure' }}
         uses: mshick/add-pr-comment@07f690343c25a94e24a8acb70d03c86b701ae322
         with:
           allow-repeats: true
