@@ -169,11 +169,11 @@ jobs:
           exec 4>&1
           out=$(set -o pipefail; dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
           exit_code=$?
-          out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
-          echo "out=$out" >> $GITHUB_OUTPUT
-          summary=$(cat $GITHUB_STEP_SUMMARY)
-          summary="${summary//'%'/'%25'}" ; summary="${summary//$'\n'/'%0A'}" ; summary="${summary//$'\r'/'%0D'}"
-          echo "summary=$summary" >> $GITHUB_OUTPUT
+          delimiter="__gh_1oFF__" ; eol=$'\n'
+          key='out'; val="$out"
+          echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
+          key='summary' ; val=$(cat $GITHUB_STEP_SUMMARY)
+          echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&- || true
           exit $exit_code
 
@@ -298,17 +298,18 @@ jobs:
           echo -e "\033[38;5;99;5;16mmerge_branch: $merge_branch\033[0m"
           git switch master && git switch -c "$merge_branch"
           branch_url="https://github.com/${GITHUB_REPOSITORY}/tree/$merge_branch"
-          branch_url="${branch_url//'%'/'%25'}" ; branch_url="${branch_url//$'\n'/'%0A'}" ; branch_url="${branch_url//$'\r'/'%0D'}"
-          echo "branch_url=$branch_url" >> $GITHUB_OUTPUT
+          delimiter="__gh_1oFF__" ; eol=$'\n'
+          key='branch_url'; val="$branch_url"
+          echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&1
           git_merge=$(set -o pipefail; git merge --commit --stat --no-progress --no-edit origin/${{ steps.gh.outputs.branch }} 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]}) || ( git merge --quit && git add . && git commit -m "Merge ${{ steps.gh.outputs.branch }} with conflicts. [skip ci]" )
           git push origin "$merge_branch"
           pr_url=$(set -o pipefail; gh pr create --fill --reviewer "${{ github.actor }}" | grep '^https://github.com/' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
           gh pr edit "$pr_url" --title "[$date] Auto-merge '${{ steps.gh.outputs.branch }}' / $sha_compact"
-          pr_url="${pr_url//'%'/'%25'}" ; pr_url="${pr_url//$'\n'/'%0A'}" ; pr_url="${pr_url//$'\r'/'%0D'}"
-          git_merge="${git_merge//'%'/'%25'}" ; git_merge="${git_merge//$'\n'/'%0A'}" ; git_merge="${git_merge//$'\r'/'%0D'}"
-          echo "pr_url=$pr_url" >> $GITHUB_OUTPUT
-          echo "git_merge=$git_merge" >> $GITHUB_OUTPUT
+          key='pr_url'; val="$pr_url"
+          echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
+          key='git_merge'; val="$git_merge"
+          echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&- || true
 
       - name: Approve PR
