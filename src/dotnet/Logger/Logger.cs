@@ -256,14 +256,20 @@ public class GitHubLogger : ITestLoggerWithParameters
             try
             {
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
+                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Passed, out var passed))
+                    passed = 0;
+                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Failed, out var failed))
+                    failed = 0;
+                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Skipped, out var skipped))
+                    skipped = 0;
 
                 var summary = _summaryGenerator.Generate(
                     name: _params.name,
                     suite: _testRunName,
                     framework: _testRunFramework,
-                    passed: results.TestRunStatistics.Stats[TestOutcome.Passed],
-                    failed: results.TestRunStatistics.Stats[TestOutcome.Failed],
-                    skipped: results.TestRunStatistics.Stats[TestOutcome.Skipped],
+                    passed,
+                    failed,
+                    skipped,
                     total: results.TestRunStatistics.ExecutedTests,
                     elapsed: results.ElapsedTimeInRunningTests,
                     testResults: _testResults.Keys
