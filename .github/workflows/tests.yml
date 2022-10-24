@@ -62,7 +62,7 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "GITHUB_SHA=$sha" >> $GITHUB_ENV
           echo "GITHUB_SHA=$sha" >> .env
-          branch=$(git rev-parse --abbrev-ref HEAD)``
+          branch=$(git rev-parse --abbrev-ref HEAD)
           echo "GITHUB_REF=refs/heads/$branch" >> $GITHUB_ENV
           echo "GITHUB_REF=refs/heads/$branch" >> .env
           echo -e "\033[38;5;99;5;16msha: $sha\033[0m"
@@ -158,6 +158,7 @@ jobs:
           out="${out//'%'/'%25'}" ; out="${out//$'\n'/'%0A'}" ; out="${out//$'\r'/'%0D'}"
           echo "out=$out" >> $GITHUB_OUTPUT
           summary=$(cat $GITHUB_STEP_SUMMARY)
+          echo $summary
           summary="${summary//'%'/'%25'}" ; summary="${summary//$'\n'/'%0A'}" ; summary="${summary//$'\r'/'%0D'}"
           echo "summary=$summary" >> $GITHUB_OUTPUT
           exec 4>&- || true

@@ -38,8 +38,8 @@ jobs:
           branch=$(git rev-parse --abbrev-ref HEAD);
           echo -e "\033[38;5;113;48;5;16m sha: $sha \033[0m"
           echo -e "\033[38;5;113;48;5;16m branch: $branch \033[0m"
-          echo "::set-output name=sha::$sha"
-          echo "::set-output name=branch::$branch"
+          echo "sha=$sha" >> $GITHUB_OUTPUT
+          echo "branch=$branch" >> $GITHUB_OUTPUT
 
       - name: Report failed
         if: ${{ failure() }}
