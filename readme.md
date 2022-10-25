@@ -1,5 +1,8 @@
 # GitHub Actions adapter for Microsoft.TestPlatform
 
+![Nuget](https://img.shields.io/nuget/v/GitHub.VsTest.Logger)
+![Nuget downloads](https://img.shields.io/nuget/dt/GitHub.VsTest.Logger)
+
 GitHub `dotnet test` logger without political shit.  
 
 > **Warning**
