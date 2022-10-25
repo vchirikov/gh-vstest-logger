@@ -256,29 +256,33 @@ public class GitHubLogger : ITestLoggerWithParameters
             try
             {
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
-                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Passed, out var passed))
-                    passed = 0;
-                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Failed, out var failed))
-                    failed = 0;
-                if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Skipped, out var skipped))
-                    skipped = 0;
+                // write summary only if filter will get some tests for assembly
+                if (results.TestRunStatistics.ExecutedTests > 0)
+                {
+                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Passed, out var passed))
+                        passed = 0;
+                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Failed, out var failed))
+                        failed = 0;
+                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Skipped, out var skipped))
+                        skipped = 0;
 
-                var summary = _summaryGenerator.Generate(
-                    name: _params.name,
-                    suite: _testRunName,
-                    framework: _testRunFramework,
-                    passed,
-                    failed,
-                    skipped,
-                    total: results.TestRunStatistics.ExecutedTests,
-                    elapsed: results.ElapsedTimeInRunningTests,
-                    testResults: _testResults.Keys
-                );
+                    var summary = _summaryGenerator.Generate(
+                        name: _params.name,
+                        suite: _testRunName,
+                        framework: _testRunFramework,
+                        passed,
+                        failed,
+                        skipped,
+                        total: results.TestRunStatistics.ExecutedTests,
+                        elapsed: results.ElapsedTimeInRunningTests,
+                        testResults: _testResults.Keys
+                    );
 
-                // we might have several msbuild processes (per testRun),
-                // so we can't just print summary into gh action output value (bc we will override the value)
-                // thus we must use a file to store results and work with contention between msbuilds
-                await _summaryWriter.WriteAsync(summary).ConfigureAwait(false);
+                    // we might have several msbuild processes (per testRun),
+                    // so we can't just print summary into gh action output value (bc we will override the value)
+                    // thus we must use a file to store results and work with contention between msbuilds
+                    await _summaryWriter.WriteAsync(summary).ConfigureAwait(false);
+                }
             }
             finally
             {

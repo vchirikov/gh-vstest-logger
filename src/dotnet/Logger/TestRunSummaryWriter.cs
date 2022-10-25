@@ -9,6 +9,13 @@ internal class TestRunSummaryWriter
 
     public async Task WriteAsync(string summary)
     {
+        try
+        {
+            var directory = Path.GetDirectoryName(_outputFilePath);
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+        }
+        catch { }
         var bytes = Encoding.UTF8.GetBytes(summary);
         await FileOperationWithRetryAsync(async () => {
             var file = new FileStream(
