@@ -156,9 +156,9 @@ jobs:
           out=$(set -o pipefail; dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
           exit_code=$?
           delimiter="__gh_1oFF__" ; eol=$'\n' ; max_length='1048570'
-          key='out'; val=$(echo "$out" | sed "s/\(.\{$max_length\}\).*/\1.../")
+          key='out'; val=$(echo "$out" | cut -c -$max_length)
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
-          key='summary' ; val=$(cat $GITHUB_STEP_SUMMARY | sed "s/\(.\{$max_length\}\).*/\1.../")
+          key='summary' ; val=$(cat $GITHUB_STEP_SUMMARY | cut -c -$max_length)
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&- || true
           exit $exit_code
