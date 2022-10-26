@@ -169,10 +169,10 @@ jobs:
           exec 4>&1
           out=$(set -o pipefail; dotnet test --nologo --no-build --filter 'FullyQualifiedName~UnitTests' --blame-hang --blame-hang-timeout 60s --logger:"github;name=unit-tests;GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }};GITHUB_SHA=${{ steps.gh.outputs.sha }}" | sed -E 's/^([[:space:]]+Failed [a-z_A-Z0-9]{3,})(.*)$/- \1\2/g' | sed -E 's/^([[:space:]]+Passed [a-z_A-Z0-9]{3,})(.*)$/+ \1\2/g' 2>&1 | tee >(cat - >&4) ; exit ${PIPESTATUS[0]})
           exit_code=$?
-          delimiter="__gh_1oFF__" ; eol=$'\n' ; max_length='1048570'
-          key='out'; val=$(echo "$out" | cut -c -$max_length)
+          delimiter="__gh_1oFF__" ; eol=$'\n' ;
+          key='out'; val=$(echo "$out" | tail -c 1MB)
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
-          key='summary' ; val=$(cat $GITHUB_STEP_SUMMARY | cut -c -$max_length)
+          key='summary' ; val=$(cat $GITHUB_STEP_SUMMARY | tail -c 1MB)
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&- || true
           exit $exit_code
@@ -297,7 +297,7 @@ jobs:
           echo -e "\033[38;5;99;5;16mmerge_branch: $merge_branch\033[0m"
           git switch master && git switch -c "$merge_branch"
           branch_url="https://github.com/${GITHUB_REPOSITORY}/tree/$merge_branch"
-          delimiter="__gh_1oFF__" ; eol=$'\n' ; max_length='1048570'
+          delimiter="__gh_1oFF__" ; eol=$'\n' ;
           key='branch_url'; val="$branch_url"
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&1
@@ -307,7 +307,7 @@ jobs:
           gh pr edit "$pr_url" --title "[$date] Auto-merge '${{ steps.gh.outputs.branch }}' / $sha_compact"
           key='pr_url'; val="$pr_url"
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
-          key='git_merge'; val=$(echo "$git_merge" | cut -c -$max_length)
+          key='git_merge'; val=$(echo "$git_merge" | tail -c 1MB)
           echo "${key}<<${delimiter}${eol}${val}${eol}${delimiter}" >> $GITHUB_OUTPUT
           exec 4>&- || true
 
