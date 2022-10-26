@@ -128,55 +128,53 @@ public class GitHubLogger : ITestLoggerWithParameters
         if (_params.GH_VSTEST_DBG.asBool())
             Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestResult)}(result:{result.DisplayName})");
 
-        if (_status != TestRunStatus.Started)
-            throw new($"Unexpected test run status: '{_status}'.");
-
         // annotate only failed tests
-        if (result.Outcome != TestOutcome.Failed && result.Outcome != TestOutcome.NotFound)
+        if (result.Outcome == TestOutcome.Failed || result.Outcome == TestOutcome.NotFound)
         {
-            if (!_testResults.TryAdd(result, Task.CompletedTask))
-                _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
-            return;
-        }
-        var task = Task.Run(async () => {
-            try
-            {
-                await OnTestResultInternalAsync(result).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _gh.Output.Error($"Exception: {ex.Message}");
-                using var _ = _gh.Output.Block("Exception info");
-                _gh.Output.Error(ex.ToString());
-            }
-        });
+            var task = Task.Run(async () => {
+                try
+                {
+                    if (_status != TestRunStatus.Started)
+                        await _initializationTask.ConfigureAwait(false);
+                    await OnTestResultInternalAsync(result).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _gh.Output.Error($"Exception: {ex.Message}");
+                    using var _ = _gh.Output.Block("Exception info");
+                    _gh.Output.Error(ex.ToString());
+                }
+            });
 
-        if (!_testResults.TryAdd(result, task))
-            _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
+            if (!_testResults.TryAdd(result, task))
+                _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
+        }
 
         async Task OnTestResultInternalAsync(TestResult result)
         {
+            if (_status != TestRunStatus.Started)
+                await _initializationTask.ConfigureAwait(false);
+
+            if (_annotationWriter == null)
+                throw new($"annotationWriter must not be null, test run status: {_status}");
+
+            var stackTraces = StackTraceParser.Parse(result.ErrorStackTrace, (f, t, m, pl, ps, fn, ln) => new
+                {
+                Frame         = f,
+                Type          = t,
+                Method        = m,
+                ParameterList = pl,
+                Parameters    = ps,
+                File          = fn,
+                Line          = ln,
+            });
+
+            var sb = new StringBuilder(1024);
+
             if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
             try
             {
-                if (_status != TestRunStatus.Started)
-                    throw new($"Unexpected TestRun status: {_status}");
-
-                if (_annotationWriter == null)
-                    throw new($"annotationWriter must not be null, test run status: {_status}");
-
-                var stackTraces = StackTraceParser.Parse(result.ErrorStackTrace, (f, t, m, pl, ps, fn, ln) => new
-                {
-                    Frame         = f,
-                    Type          = t,
-                    Method        = m,
-                    ParameterList = pl,
-                    Parameters    = ps,
-                    File          = fn,
-                    Line          = ln,
-                });
-                var sb = new StringBuilder(1024);
                 foreach (var st in stackTraces)
                 {
                     if (!int.TryParse(st.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
