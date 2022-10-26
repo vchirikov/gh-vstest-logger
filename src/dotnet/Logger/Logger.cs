@@ -238,8 +238,6 @@ public class GitHubLogger : ITestLoggerWithParameters
         {
             if (_params.GH_VSTEST_DBG.asBool())
                 Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestRunComplete)}()");
-            if (_status != TestRunStatus.Started)
-                throw new($"Unexpected test run status: '{_status}'.");
             OnTestRunCompleteInternalAsync(results).GetAwaiter().GetResult();
         }
         catch (Exception ex)
@@ -253,6 +251,7 @@ public class GitHubLogger : ITestLoggerWithParameters
         {
             try
             {
+                await _initializationTask.ConfigureAwait(false);
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
                 // write summary only if filter will get some tests for assembly
                 if (results.TestRunStatistics.ExecutedTests > 0)
