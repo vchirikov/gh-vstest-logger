@@ -32,7 +32,7 @@ internal sealed class TestRunSummaryGenerator
 
         sb.Append("<details>")
             .Append("<summary>")
-            .Append(failed >= 0 ? "📕" : skipped >= 0 ? "📙" : "📗")
+            .Append(failed > 0 ? "📕" : skipped > 0 ? "📙" : "📗")
             .Append(" ")
             .Append("<b>")
             .Append(name);
