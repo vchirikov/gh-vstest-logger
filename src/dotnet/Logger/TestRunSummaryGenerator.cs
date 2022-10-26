@@ -107,7 +107,7 @@ internal sealed class TestRunSummaryGenerator
                     .Append("Fail: ")
                     .Append(string.IsNullOrWhiteSpace(url) ? "**" : "[**")
                     .Append(testResult.TestCase.DisplayName)
-                    .AppendLine(string.IsNullOrWhiteSpace(url) ? "**" : $"]**({url})")
+                    .AppendLine(string.IsNullOrWhiteSpace(url) ? "**" : $"**]({url})")
                     .AppendLine("```yml")
                     .AppendLine(testResult.ErrorMessage)
                     .AppendLine(testResult.ErrorStackTrace)
