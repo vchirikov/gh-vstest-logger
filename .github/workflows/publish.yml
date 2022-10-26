@@ -154,7 +154,7 @@ jobs:
           report-failure: |-
             ❌ Build failed  `(╯°□°)╯︵ ┻━┻`
 
-            <details open> <summary> dotnet build output </summary>
+            <details> <summary> dotnet build output </summary>
 
             ```diff
             {0}
@@ -201,7 +201,7 @@ jobs:
 
             ${{ steps.tests.outputs.summary }}
 
-            <details open> <summary> Tests output </summary>
+            <details> <summary> Tests output </summary>
 
             ```diff
             ${{ steps.tests.outputs.out }}
@@ -221,7 +221,7 @@ jobs:
           report-failure: |-
             📦 Publishing failed. `(╯°□°)╯︵ ┻━┻`
 
-            <details open> <summary> Output </summary>
+            <details> <summary> Output </summary>
 
             ```diff
             {0}
