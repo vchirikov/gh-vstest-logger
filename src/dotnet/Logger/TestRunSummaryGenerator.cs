@@ -6,14 +6,14 @@ internal sealed class TestRunSummaryGenerator
 {
     private readonly string _serverUrl;
     private readonly string _repository;
-    private readonly string _workspace;
     private readonly string _sha;
+    private readonly StackTraceParser _stackTraceParser;
 
-    public TestRunSummaryGenerator(string serverUrl, string repository, string workspace, string sha)
+    public TestRunSummaryGenerator(StackTraceParser stackTraceParser, string serverUrl, string repository, string sha)
     {
+        _stackTraceParser = stackTraceParser;
         _serverUrl = serverUrl;
         _repository = repository;
-        _workspace = workspace.Replace('\\', '/').TrimEnd('/');
         _sha = sha;
     }
 
@@ -86,18 +86,11 @@ internal sealed class TestRunSummaryGenerator
 
         foreach (var testResult in testResults.Where(r => r.Outcome == TestOutcome.Failed))
         {
-            var stackTraces = StackTraceParser.Parse(testResult.ErrorStackTrace, (f, t, m, pl, ps, fn, ln) => new
-            {
-                Frame         = f,
-                Type          = t,
-                Method        = m,
-                ParameterList = pl,
-                Parameters    = ps,
-                File          = fn,
-                Line          = ln,
-            });
+            var stackTraces = _stackTraceParser.ParseAndNormalize(testResult.ErrorStackTrace);
+            var stackTrace = stackTraces.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
+                ?? stackTraces.FirstOrDefault();
 
-            foreach (var stackTrace in stackTraces)
+            if (stackTrace != null)
             {
                 var url = !string.IsNullOrWhiteSpace(stackTrace.File)
                 ? TryGenerateFilePermalink(stackTrace.File, stackTrace.Line)
@@ -126,20 +119,13 @@ internal sealed class TestRunSummaryGenerator
     {
         if (string.IsNullOrWhiteSpace(_serverUrl) ||
             string.IsNullOrWhiteSpace(_repository) ||
-            string.IsNullOrWhiteSpace(_workspace) ||
             string.IsNullOrWhiteSpace(_sha))
         {
             return null;
         }
 
-        var filePathNormalized = filePath
-            .Replace('\\', '/')
-            .TrimEnd('/')
-            .Replace(_workspace, "", StringComparison.Ordinal)
-            .Trim('/');
-
         line = string.IsNullOrWhiteSpace(line) ? "" : $"#L{line}";
 
-        return $"{_serverUrl}/{_repository}/blob/{_sha}/{filePathNormalized}{line}";
+        return $"{_serverUrl}/{_repository}/blob/{_sha}/{filePath}{line}";
     }
 }

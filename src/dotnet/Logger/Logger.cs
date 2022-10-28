@@ -18,6 +18,7 @@ public class GitHubLogger : ITestLoggerWithParameters
 
     private LoggerParameters _params = null!;
     private GitHubApi _gh = null!;
+    private StackTraceParser _stackTraceParser = null!;
     private TestRunSummaryGenerator _summaryGenerator = null!;
     private TestRunSummaryWriter _summaryWriter = null!;
     private string? _testRunName;
@@ -51,13 +52,19 @@ public class GitHubLogger : ITestLoggerWithParameters
             _gh.Output.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
             return;
         }
+        var workspace = !string.IsNullOrWhiteSpace(_params.GITHUB_WORKSPACE)
+            ? _params.GITHUB_WORKSPACE
+            : Environment.CurrentDirectory;
+
+        _stackTraceParser = new StackTraceParser(workspace);
 
         _summaryGenerator = new TestRunSummaryGenerator(
+            _stackTraceParser,
             _params.GITHUB_SERVER_URL,
             _params.GITHUB_REPOSITORY,
-            _params.GITHUB_WORKSPACE,
             _params.GITHUB_SHA
         );
+
         var summaryFile = !string.IsNullOrWhiteSpace(_params.GITHUB_STEP_SUMMARY)
             ? _params.GITHUB_STEP_SUMMARY
             : "test-run.md";
@@ -158,45 +165,35 @@ public class GitHubLogger : ITestLoggerWithParameters
             if (_annotationWriter == null)
                 throw new($"annotationWriter must not be null, test run status: {_status}");
 
-            var stackTraces = StackTraceParser.Parse(result.ErrorStackTrace, (f, t, m, pl, ps, fn, ln) => new
-                {
-                Frame         = f,
-                Type          = t,
-                Method        = m,
-                ParameterList = pl,
-                Parameters    = ps,
-                File          = fn,
-                Line          = ln,
-            });
-
             var sb = new StringBuilder(1024);
 
-            if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
-                throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
-            try
+            var stackTraces = _stackTraceParser.ParseAndNormalize(result.ErrorStackTrace);
+            var stackTrace = stackTraces.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
+                    ?? stackTraces.FirstOrDefault();
+
+            if (stackTrace != null)
             {
-                foreach (var st in stackTraces)
+                if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
+                    throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
+                try
                 {
-                    if (!int.TryParse(st.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
+                    if (!int.TryParse(stackTrace.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
                         _gh.Output.Warning("Can't parse line in stacktrace");
 
                     await _annotationWriter.ErrorAsync(
                         message: GetDetailsMessage(result, sb),
                         title: $"{result.TestCase.DisplayName}",
-                        file: WorkspaceRelativePath(st.File),
+                        file: stackTrace.File,
                         line: line > 5 ? line - 5 : line,
                         endLine: line + 1
                     ).ConfigureAwait(false);
                 }
-            }
-            finally
-            {
-                _locker.Release();
+                finally
+                {
+                    _locker.Release();
+                }
             }
         }
-        string WorkspaceRelativePath(string fullPath) => string.IsNullOrEmpty(_params.GITHUB_WORKSPACE)
-            ? fullPath
-            : fullPath.Replace(_params.GITHUB_WORKSPACE, "", StringComparison.Ordinal).TrimStart('\\', '/');
 
         static string GetDetailsMessage(TestResult result, StringBuilder sb)
         {
