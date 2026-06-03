@@ -24,7 +24,7 @@ internal sealed class GitHubApi : IGitHubApi
         _params = parameters;
         Output = output;
         IsGitHubActions = _params.CI.asBool() && _params.GITHUB_ACTIONS.asBool();
-        _isOctokitEnabled = IsGitHubActions && _params.GITHUB_TOKEN?.Length == 40 && _params.GITHUB_SHA?.Length > 0;
+        _isOctokitEnabled = IsGitHubActions && !string.IsNullOrEmpty(_params.GITHUB_TOKEN) && _params.GITHUB_SHA?.Length > 0;
         _api = _isOctokitEnabled
             ? new(() => {
                 if (api != null)

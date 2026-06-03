@@ -47,11 +47,6 @@ public class GitHubLogger : ITestLoggerWithParameters
             _gh.Output.Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
             return;
         }
-        if (!string.IsNullOrEmpty(_params.GITHUB_TOKEN) && _params.GITHUB_TOKEN.Length != 40)
-        {
-            _gh.Output.Warning("GITHUB_TOKEN is an unsupported token (length != 40). Logger won't do anything.");
-            return;
-        }
         var workspace = !string.IsNullOrWhiteSpace(_params.GITHUB_WORKSPACE)
             ? _params.GITHUB_WORKSPACE
             : Environment.CurrentDirectory;
