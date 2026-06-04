@@ -1,15 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsTestProject>false</IsTestProject>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Xunit.DependencyInjection" />
     <PackageReference Include="Xunit.DependencyInjection.Logging" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- remove direct xunit reference (it generates code with direct link) -->
+    <PackageReference Remove="xunit.v3" />
   </ItemGroup>
 
   <ItemGroup>

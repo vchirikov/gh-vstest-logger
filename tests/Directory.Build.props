@@ -3,7 +3,6 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\tests</OutputPath>
     <!-- CA1034 - Do not nest type -->
     <!-- CA1822	- Member can be marked as static -->
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
@@ -23,16 +22,15 @@
 
   <ItemGroup>
     <PackageReference Include="Moq" />
-    <PackageReference Include="Moq.Analyzers" />
-    <PackageReference Include="Moq.Autocomplete" />
+    <PackageReference Include="Moq.Analyzers" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Moq.Autocomplete" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.analyzers" />
-    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.analyzers" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
 
     <Using Include="Xunit" />
-    <Using Include="Xunit.Abstractions" />
     <Using Include="Moq" />
     <Using Include="FluentAssertions" />
 

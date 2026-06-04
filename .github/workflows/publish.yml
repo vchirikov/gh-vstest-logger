@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: git checkout / on 'workflow_call'
         if: ${{ inputs.ref != '' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           clean: false
           ref: ${{ inputs.ref }}
@@ -58,7 +58,7 @@ jobs:
 
       - name: git checkout / on non-'workflow_call'
         if: ${{ inputs.ref == '' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           clean: false
           ref: ${{ github.event.pull_request.head.sha }}
@@ -84,34 +84,31 @@ jobs:
           echo "branch=$branch" >> $GITHUB_OUTPUT
           echo "::add-matcher::./.github/csc.json"
 
-      # we can use [`IGNORE_GITHUB_REF: true`](https://github.com/dotnet/nbgv/issues/50) with default dotnet/nbgv@master
-      # after 3.6 nbgv release and the gh runner will have it
       - name: Generate version
         id: nbgv
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
-          script: |
+          # https://github.com/actions/toolkit/tree/main/packages/exec#basic
+          script: |-
             const path = require('path');
             const os = require('os');
             process.env.GITHUB_REF='refs/heads/${{ steps.gh.outputs.branch }}';
             process.env.GITHUB_SHA='${{ steps.gh.outputs.sha }}';
             try {
-              // install nbgv isn' required
-              // the image includes nbgv [actions/runner-images](https://github.com/actions/runner-images/blob/main/images/linux/Ubuntu2204-Readme.md#net-tools)
-
               // collect a JSON string of all the version properties.
               let versionJson = '';
-              await exec.exec('nbgv', ['get-version', '-f', 'json'], { listeners: { stdout: (data) => { versionJson += data.toString() } } });
+              await exec.exec('nbgv', ['get-version', '-f', 'json', '--project', '.'], { listeners: { stdout: (data) => { versionJson += data.toString() } } });
               core.setOutput('versionJson', versionJson);
 
               // break up the JSON into individual outputs.
               const versionProperties = JSON.parse(versionJson);
-              for (let name in versionProperties.CloudBuildAllVars) {
+              for (const name in versionProperties.CloudBuildAllVars) {
                 // Trim off the leading NBGV_
-                core.setOutput(name.substring(5), versionProperties.CloudBuildAllVars[name]);
+                const outputName = name.substring(5);
+                core.setOutput(outputName, versionProperties.CloudBuildAllVars[name]);
+                core.exportVariable(outputName, versionProperties.CloudBuildAllVars[name]);
               }
-
-              await exec.exec('nbgv', ['cloud', '-a']);
+              await exec.exec('nbgv', ['cloud', '--ci-system', 'GitHubActions', '--all-vars', '--project', '.']);
             }
             catch (error) {
               core.setFailed(error.message);
@@ -135,8 +132,15 @@ jobs:
           echo "::error::The master branch ${{ steps.gh.outputs.branch }} must have a prerelease suffix in version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
 
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            10.x
+
       - name: NuGet cache restore
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
@@ -214,8 +218,9 @@ jobs:
         uses: vchirikov/.github/shell-and-report-action@master
         with:
           commands: |-
-            dotnet pack --no-restore --nologo -c Release -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
-            dotnet nuget push artifacts/nupkg/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }}  --source https://api.nuget.org/v3/index.json --force-english-output --timeout 20 --skip-duplicate | sed -E 's/^(.*?)(error)(.*)$/- \1\2\3/g'
+            dotnet pack -c Release -p:GenerateFullPaths=true /clp:NoSummary | sed -E 's/^(.*?)(error [A-Z0-9]{3,}:)(.*)$/- \1\2\3/g'
+            dotnet msbuild -getproperty:AssemblyName,DeterministicSourcePaths,CI,IsPackable,PackageIcon,PackageReadmeFile,ContinuousIntegrationBuild,Configuration,DesignTimeBuild,BuildingForLiveUnitTesting,SourceRevisionId,GitCommitId src/dotnet/Logger/Logger.csproj | jq
+            dotnet nuget push artifacts/nupkg/*.nupkg --api-key ${{ secrets.NUGET_TOKEN }} --source https://api.nuget.org/v3/index.json --force-english-output --timeout 20 --skip-duplicate | sed -E 's/^(.*?)(error)(.*)$/- \1\2\3/g'
           report-success: |-
             🎉 Version `${{ steps.nbgv.outputs.SemVer2 }}` was successful published! `(〃￣︶￣)人(￣︶￣〃)`
           report-failure: |-

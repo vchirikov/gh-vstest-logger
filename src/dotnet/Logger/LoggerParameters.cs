@@ -9,7 +9,8 @@ internal record class LoggerParameters
 {
     private LoggerParameters() { }
 
-    internal static LoggerParameters Create(Dictionary<string, string>? parameters = null, Func<string, string?>? envReader = null)
+    internal static LoggerParameters Create(Dictionary<string, string?>? parameters = null,
+        Func<string, string?>? envReader = null)
     {
         var obj = new LoggerParameters();
         envReader ??= static (string variable) => Environment.GetEnvironmentVariable(variable);
@@ -17,10 +18,11 @@ internal record class LoggerParameters
         var fields = typeof(LoggerParameters).GetFields(BindingFlags.Public | BindingFlags.Instance);
         foreach (var fi in typeof(LoggerParameters).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
-            if (parameters?.TryGetValue(fi.Name, out string fieldValue) != true)
+            if (parameters?.TryGetValue(fi.Name, out string? fieldValue) != true)
                 fieldValue = envReader(fi.Name) ?? "";
             fi.SetValueDirect(tr, fieldValue);
         }
+
         return obj;
     }
 
@@ -222,5 +224,4 @@ internal record class LoggerParameters
     /// The path to the directory containing preinstalled tools for GitHub-hosted runners. For more information, see "About GitHub-hosted runners". For example, C:\hostedtoolcache\windows
     /// </summary>
     public string RUNNER_TOOL_CACHE = "";
-
 }

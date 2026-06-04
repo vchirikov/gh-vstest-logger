@@ -1,7 +1,7 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props" />
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RepoName>GitHub.VsTest</RepoName>
     <AssemblyName>$(RepoName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(RepoName).$(MSBuildProjectName)</RootNamespace>
@@ -55,6 +55,13 @@
     <SourceLinkHasSingleProvider>true</SourceLinkHasSingleProvider>
     <EnableSourceControlManagerQueries>$(EnableSourceLink)</EnableSourceControlManagerQueries>
     <GitVersionBaseDirectory>$(RepoRoot)</GitVersionBaseDirectory>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      prevents nbgv to read .git folder to get version info.
+      disabled because every commit change version height which causes rebuilding all projects on each commit
+      it also helps to get faster builds
+    -->
+    <NBGV_GitEngine>Disabled</NBGV_GitEngine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
     <Deterministic>true</Deterministic>
@@ -67,8 +74,18 @@
     <SourceRoot Include="$(SolutionDir)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+  <ItemGroup Condition=" '$(IsPackable)' == 'true' AND '$(DeterministicSourcePaths)' == 'true' ">
     <None Include="$(RepoRoot)readme.md" Pack="true" PackagePath="" Visible="false" />
     <None Include="$(RepoRoot)docs\icon.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
+    <!-- even without SourceLink looks like we [need to define SourceRoot](https://github.com/dotnet/roslyn/issues/37379) -->
+    <SourceRoot Include="$(SolutionDir)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)"/>
+  </ItemGroup>
+
+  <PropertyGroup Condition=" '$(IsPackable)' == 'true' AND '$(DeterministicSourcePaths)' == 'true' ">
+    <IncludeSymbols>true</IncludeSymbols>
+    <PackageIconUrl>https://raw.githubusercontent.com/vchirikov/gh-vstest-logger/master/docs/icon.png</PackageIconUrl>
+  </PropertyGroup>
 </Project>

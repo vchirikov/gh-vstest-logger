@@ -11,7 +11,8 @@ namespace GitHub.VsTest.Testing;
 public class StartupBase
 {
     public virtual void ConfigureHost(IHostBuilder hostBuilder) => hostBuilder
-            .ConfigureHostConfiguration(cfg => {
+            .ConfigureHostConfiguration(cfg =>
+            {
                 var dir = GetBaseDirectory();
                 cfg.Sources.Clear();
                 cfg.SetBasePath(dir);
@@ -22,9 +23,6 @@ public class StartupBase
                 }
                 cfg.AddJsonFile("testsettings.local.json", optional: true, reloadOnChange: false);
             });
-
-    public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor) =>
-        loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor));
 
     public virtual void ConfigureServices(IServiceCollection services, HostBuilderContext ctx)
     {

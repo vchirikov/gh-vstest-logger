@@ -25,28 +25,29 @@ public class GitHubLogger : ITestLoggerWithParameters
     private string? _testRunFramework;
     private IGitHubAnnotationWriter? _annotationWriter;
     private TestRunStatus _status = TestRunStatus.NotRunning;
-    private readonly SemaphoreSlim _locker = new(1,1);
+    private readonly SemaphoreSlim _locker = new(1, 1);
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(120);
     private readonly ConcurrentDictionary<TestResult, Task> _testResults = new();
-    private Task _initializationTask = Task.FromException(new ("Lifetime error"));
+    private Task _initializationTask = Task.FromException(new("Lifetime error"));
 
-    public void Initialize(TestLoggerEvents events, Dictionary<string, string> parameters)
+    public void Initialize(TestLoggerEvents events, Dictionary<string, string?> parameters)
     {
         _params = LoggerParameters.Create(parameters);
         IGitHubClient? apiClient = null;
-        if (string.Equals(_params.GITHUB_TOKEN, "ghp_____________________________________", StringComparison.Ordinal))
-        {
+        if (string.Equals(_params.GITHUB_TOKEN, "ghp_____________________________________", StringComparison.Ordinal)) {
             if (_params.GH_VSTEST_DBG.asBool())
                 Console.WriteLine("[GitHub.VsTest.Logger]: Use the mock of IGitHubClient");
             apiClient = new MockGitHubClient();
         }
+
         _gh = new GitHubApi(_params, new ConsoleOutput(), apiClient);
         _gh.Output.Echo(_params.echo.asBool());
-        if (!_gh.IsGitHubActions)
-        {
-            _gh.Output.Warning("This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
+        if (!_gh.IsGitHubActions) {
+            _gh.Output.Warning(
+                "This isn't a GitHub Actions environment. Logger won't do anything. You can force it with 'CI=1;GITHUB_ACTIONS=1' parameters or env variables.");
             return;
         }
+
         var workspace = !string.IsNullOrWhiteSpace(_params.GITHUB_WORKSPACE)
             ? _params.GITHUB_WORKSPACE
             : Environment.CurrentDirectory;
@@ -76,20 +77,17 @@ public class GitHubLogger : ITestLoggerWithParameters
     /// <summary> Raised when a test run starts. </summary>
     private void OnTestRunStart(TestRunCriteria testRunCriteria)
     {
-        if (_status == TestRunStatus.Started)
-        {
+        if (_status == TestRunStatus.Started) {
             _gh.Output.Error($"Something went wrong, {nameof(OnTestRunStart)} was already called.");
             return;
         }
 
         _initializationTask = Task.Run(async () => {
-            try
-            {
+            try {
                 await InitAsync().ConfigureAwait(false);
                 _status = TestRunStatus.Started;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _gh.Output.Error($"Exception: {ex.Message}");
                 using var _ = _gh.Output.Block("Exception info");
                 _gh.Output.Error(ex.ToString());
@@ -100,9 +98,9 @@ public class GitHubLogger : ITestLoggerWithParameters
         {
             if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
                 throw new TimeoutException($"{nameof(OnTestRunStart)}: Waiting for the lock is too long");
-            try
-            {
-                string testRunName =$"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}";
+            try {
+                string testRunName =
+                    $"dotnet test{(string.IsNullOrEmpty(testRunCriteria.TestCaseFilter) ? "" : " --filter:" + testRunCriteria.TestCaseFilter)} / {_params.name}";
                 var sources = testRunCriteria?.Sources?.FirstOrDefault();
                 _testRunName = !string.IsNullOrWhiteSpace(sources)
                     ? Path.GetFileNameWithoutExtension(sources)
@@ -117,8 +115,7 @@ public class GitHubLogger : ITestLoggerWithParameters
                 _annotationWriter = await _gh.CreateAnnotationWriterAsync(testRunName).ConfigureAwait(false);
                 _status = TestRunStatus.Started;
             }
-            finally
-            {
+            finally {
                 _locker.Release();
             }
         }
@@ -128,20 +125,17 @@ public class GitHubLogger : ITestLoggerWithParameters
     private void OnTestResult(TestResult result)
     {
         if (_params.GH_VSTEST_DBG.asBool())
-            Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestResult)}(result:{result.DisplayName})");
+            Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestResult)}(testResult:{result.DisplayName})");
 
         // annotate only failed tests
-        if (result.Outcome == TestOutcome.Failed || result.Outcome == TestOutcome.NotFound)
-        {
+        if (result.Outcome == TestOutcome.Failed || result.Outcome == TestOutcome.NotFound) {
             var task = Task.Run(async () => {
-                try
-                {
+                try {
                     if (_status != TestRunStatus.Started)
                         await _initializationTask.ConfigureAwait(false);
                     await OnTestResultInternalAsync(result).ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     _gh.Output.Error($"Exception: {ex.Message}");
                     using var _ = _gh.Output.Block("Exception info");
                     _gh.Output.Error(ex.ToString());
@@ -152,7 +146,7 @@ public class GitHubLogger : ITestLoggerWithParameters
                 _gh.Output.Error($"Dictionary already contains the testResult for {result.DisplayName}");
         }
 
-        async Task OnTestResultInternalAsync(TestResult result)
+        async Task OnTestResultInternalAsync(TestResult testResult)
         {
             if (_status != TestRunStatus.Started)
                 await _initializationTask.ConfigureAwait(false);
@@ -161,62 +155,63 @@ public class GitHubLogger : ITestLoggerWithParameters
                 throw new($"annotationWriter must not be null, test run status: {_status}");
 
             var sb = new StringBuilder(1024);
-
-            var stackTraces = _stackTraceParser.ParseAndNormalize(result.ErrorStackTrace);
-            var stackTrace = stackTraces.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
+            if (!string.IsNullOrEmpty(testResult.ErrorStackTrace)) {
+                var stackTraces = _stackTraceParser.ParseAndNormalize(testResult.ErrorStackTrace).ToArray();
+                var stackTrace =
+                    stackTraces.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
                     ?? stackTraces.FirstOrDefault();
 
-            if (stackTrace != null)
-            {
-                if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
-                    throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
-                try
-                {
-                    if (!int.TryParse(stackTrace.Line, NumberStyles.Integer, CultureInfo.InvariantCulture, out int line))
-                        _gh.Output.Warning("Can't parse line in stacktrace");
+                if (stackTrace != null) {
+                    if (!await _locker.WaitAsync(_timeout).ConfigureAwait(false))
+                        throw new TimeoutException($"{nameof(OnTestResult)}: Waiting for the lock is too long");
+                    try {
+                        if (!int.TryParse(stackTrace.Line, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                out int line)) {
+                            _gh.Output.Warning("Can't parse line in stacktrace");
+                        }
 
-                    await _annotationWriter.ErrorAsync(
-                        message: GetDetailsMessage(result, sb),
-                        title: $"{result.TestCase.DisplayName}",
-                        file: stackTrace.File,
-                        line: line > 5 ? line - 5 : line,
-                        endLine: line + 1
-                    ).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _locker.Release();
+                        await _annotationWriter.ErrorAsync(
+                            message: GetDetailsMessage(testResult, sb),
+                            title: $"{testResult.TestCase.DisplayName}",
+                            file: stackTrace.File,
+                            line: line > 5 ? line - 5 : line,
+                            endLine: line + 1
+                        ).ConfigureAwait(false);
+                    }
+                    finally {
+                        _locker.Release();
+                    }
                 }
             }
         }
 
         static string GetDetailsMessage(TestResult result, StringBuilder sb)
         {
-            if (!string.IsNullOrEmpty(result.ErrorMessage))
-            {
+            if (!string.IsNullOrEmpty(result.ErrorMessage)) {
                 sb.AppendLine(result.ErrorMessage);
             }
 
-            if (!string.IsNullOrEmpty(result.ErrorStackTrace))
-            {
+            if (!string.IsNullOrEmpty(result.ErrorStackTrace)) {
                 sb.AppendLine("[Stack Trace]");
                 sb.AppendLine(result.ErrorStackTrace);
             }
 
-            if (result.Messages.Count > 0)
-            {
+            if (result.Messages.Count > 0) {
                 sb.AppendLine("[Output]");
-                foreach (TestResultMessage message in result.Messages)
-                {
-                    if (message.Category.Equals(TestResultMessage.StandardErrorCategory, StringComparison.OrdinalIgnoreCase))
+                foreach (TestResultMessage message in result.Messages) {
+                    if (message.Category.Equals(TestResultMessage.StandardErrorCategory,
+                            StringComparison.OrdinalIgnoreCase))
                         sb.Append("[stderr]: ");
-                    else if (message.Category.Equals(TestResultMessage.DebugTraceCategory, StringComparison.OrdinalIgnoreCase))
+                    else if (message.Category.Equals(TestResultMessage.DebugTraceCategory,
+                                 StringComparison.OrdinalIgnoreCase))
                         sb.Append("[dbg]: ");
-                    else if (message.Category.Equals(TestResultMessage.AdditionalInfoCategory, StringComparison.OrdinalIgnoreCase))
+                    else if (message.Category.Equals(TestResultMessage.AdditionalInfoCategory,
+                                 StringComparison.OrdinalIgnoreCase))
                         sb.Append("[info]: ");
                     sb.AppendLine(message.Text);
                 }
             }
+
             var str = sb.ToString();
             sb.Clear();
             return str;
@@ -226,33 +221,31 @@ public class GitHubLogger : ITestLoggerWithParameters
     /// <summary> Raised when a test run is complete. </summary>
     private void OnTestRunComplete(TestRunCompleteEventArgs results)
     {
-        try
-        {
+        try {
             if (_params.GH_VSTEST_DBG.asBool())
                 Console.WriteLine($"[GitHub.VsTest.Logger]: {nameof(OnTestRunComplete)}()");
+#pragma warning disable VSTHRD002
             OnTestRunCompleteInternalAsync(results).GetAwaiter().GetResult();
+#pragma warning restore VSTHRD002
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _gh.Output.Error($"Exception: {ex.Message}");
             using var _ = _gh.Output.Block("Exception info");
             _gh.Output.Error(ex.ToString());
         }
 
-        async Task OnTestRunCompleteInternalAsync(TestRunCompleteEventArgs results)
+        async Task OnTestRunCompleteInternalAsync(TestRunCompleteEventArgs args)
         {
-            try
-            {
+            try {
                 await _initializationTask.ConfigureAwait(false);
                 await Task.WhenAll(_testResults.Values.ToArray()).ConfigureAwait(false);
                 // write summary only if filter will get some tests for assembly
-                if (results.TestRunStatistics.ExecutedTests > 0)
-                {
-                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Passed, out var passed))
+                if (args.TestRunStatistics is { Stats: not null, ExecutedTests: > 0 }) {
+                    if (!args.TestRunStatistics.Stats.TryGetValue(TestOutcome.Passed, out var passed))
                         passed = 0;
-                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Failed, out var failed))
+                    if (!args.TestRunStatistics.Stats.TryGetValue(TestOutcome.Failed, out var failed))
                         failed = 0;
-                    if (!results.TestRunStatistics.Stats.TryGetValue(TestOutcome.Skipped, out var skipped))
+                    if (!args.TestRunStatistics.Stats.TryGetValue(TestOutcome.Skipped, out var skipped))
                         skipped = 0;
 
                     var summary = _summaryGenerator.Generate(
@@ -262,31 +255,28 @@ public class GitHubLogger : ITestLoggerWithParameters
                         passed,
                         failed,
                         skipped,
-                        total: results.TestRunStatistics.ExecutedTests,
-                        elapsed: results.ElapsedTimeInRunningTests,
+                        total: args.TestRunStatistics.ExecutedTests,
+                        elapsed: args.ElapsedTimeInRunningTests,
                         testResults: _testResults.Keys
                     );
 
                     // we might have several msbuild processes (per testRun),
                     // so we can't just print summary into gh action output value (bc we will override the value)
-                    // thus we must use a file to store results and work with contention between msbuilds
+                    // thus we must use a file to store args and work with contention between msbuilds
                     await _summaryWriter.WriteAsync(summary).ConfigureAwait(false);
                 }
             }
-            finally
-            {
-                if (_annotationWriter != null)
-                {
+            finally {
+                if (_annotationWriter != null) {
                     await _annotationWriter.DisposeAsync().ConfigureAwait(false);
                     _annotationWriter = null;
                 }
-                if (await _locker.WaitAsync(_timeout).ConfigureAwait(false))
-                {
+
+                if (await _locker.WaitAsync(_timeout).ConfigureAwait(false)) {
                     _status = TestRunStatus.Finished;
                     _locker.Release();
                 }
-                else
-                {
+                else {
                     _gh.Output.Error("Waiting for the lock is too long");
                 }
             }
@@ -294,7 +284,10 @@ public class GitHubLogger : ITestLoggerWithParameters
     }
 
     public void Initialize(TestLoggerEvents events, string testRunDirectory)
-            => Initialize(events, new Dictionary<string, string>(StringComparer.Ordinal) { { DefaultLoggerParameterNames.TestRunDirectory, testRunDirectory } });
+        => Initialize(events,
+            new Dictionary<string, string?>(StringComparer.Ordinal) {
+                { DefaultLoggerParameterNames.TestRunDirectory, testRunDirectory },
+            });
 
     private enum TestRunStatus
     {

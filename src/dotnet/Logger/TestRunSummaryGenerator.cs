@@ -49,36 +49,36 @@ internal sealed class TestRunSummaryGenerator
             .Append("<br/>")
             .Append("<table>")
             .Append("<th width=\"99999\">")
-                .Append("🟢&nbsp;&nbsp;Passed")
+            .Append("🟢&nbsp;&nbsp;Passed")
             .Append("</th>")
             .Append("<th width=\"99999\">")
-                .Append("🔴&nbsp;&nbsp;Failed")
+            .Append("🔴&nbsp;&nbsp;Failed")
             .Append("</th>")
             .Append("<th width=\"99999\">")
-                .Append("🟡&nbsp;&nbsp;Skipped")
+            .Append("🟡&nbsp;&nbsp;Skipped")
             .Append("</th>")
             .Append("<th width=\"99999\">")
-                .Append("∑&nbsp;&nbsp;Total")
+            .Append("∑&nbsp;&nbsp;Total")
             .Append("</th>")
             .Append("<th width=\"99999\">")
-                .Append("🕙&nbsp;&nbsp;Elapsed")
+            .Append("🕙&nbsp;&nbsp;Elapsed")
             .Append("</th>")
             // Table body
             .Append("<tr>")
             .Append("<td align=\"center\">")
-                .Append(passed > 0 ? passed.ToString(CultureInfo.InvariantCulture) : "—")
+            .Append(passed > 0 ? passed.ToString(CultureInfo.InvariantCulture) : "—")
             .Append("</td>")
             .Append("<td align=\"center\">")
-                .Append(failed > 0 ? failed.ToString(CultureInfo.InvariantCulture) : "—")
+            .Append(failed > 0 ? failed.ToString(CultureInfo.InvariantCulture) : "—")
             .Append("</td>")
             .Append("<td align=\"center\">")
-                .Append(skipped > 0 ? skipped.ToString(CultureInfo.InvariantCulture) : "—")
+            .Append(skipped > 0 ? skipped.ToString(CultureInfo.InvariantCulture) : "—")
             .Append("</td>")
             .Append("<td align=\"center\">")
-                .Append(total)
+            .Append(total)
             .Append("</td>")
             .Append("<td align=\"center\">")
-                .Append(FormatTimeSpan(elapsed))
+            .Append(FormatTimeSpan(elapsed))
             .Append("</td>")
             .Append("</tr>")
             .AppendLine("</table>")
@@ -86,15 +86,17 @@ internal sealed class TestRunSummaryGenerator
 
         foreach (var testResult in testResults.Where(r => r.Outcome == TestOutcome.Failed))
         {
-            var stackTraces = _stackTraceParser.ParseAndNormalize(testResult.ErrorStackTrace);
-            var stackTrace = stackTraces.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
-                ?? stackTraces.FirstOrDefault();
+            var stackTraces = !string.IsNullOrEmpty(testResult.ErrorStackTrace)
+                ? _stackTraceParser.ParseAndNormalize(testResult.ErrorStackTrace).ToArray()
+                : null;
+            var stackTrace = stackTraces?.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.File) && File.Exists(x.File))
+                             ?? stackTraces?.FirstOrDefault();
 
             if (stackTrace != null)
             {
                 var url = !string.IsNullOrWhiteSpace(stackTrace.File)
-                ? TryGenerateFilePermalink(stackTrace.File, stackTrace.Line)
-                : "#";
+                    ? TryGenerateFilePermalink(stackTrace.File, stackTrace.Line)
+                    : "#";
 
                 sb
                     .Append("Fail: ")
@@ -112,7 +114,12 @@ internal sealed class TestRunSummaryGenerator
         return sb.ToString();
 
         static string FormatTimeSpan(TimeSpan timeSpan)
-            => timeSpan switch { { TotalDays: var days } when days >= 1 => Invariant($"{timeSpan.TotalDays:0.0000} days"), { TotalHours: var hours } when hours >= 1 => Invariant($"{timeSpan.TotalHours:0.0000} hours"), { TotalMinutes: var min } when min >= 1 => Invariant($"{timeSpan.TotalMinutes:0.0000} minutes"), { TotalSeconds: var sec } => Invariant($"{timeSpan.TotalSeconds:0.0000} seconds") };
+            => timeSpan switch {
+                { TotalDays: >= 1 } => Invariant($"{timeSpan.TotalDays:0.0000} days"),
+                { TotalHours: >= 1 } => Invariant($"{timeSpan.TotalHours:0.0000} hours"),
+                { TotalMinutes: >= 1 } => Invariant($"{timeSpan.TotalMinutes:0.0000} minutes"),
+                { } => Invariant($"{timeSpan.TotalSeconds:0.0000} seconds"),
+            };
     }
 
     private string? TryGenerateFilePermalink(string filePath, string? line)

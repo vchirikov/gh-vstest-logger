@@ -5,7 +5,6 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
     <!-- Include the PDB and xmldoc in the built .nupkg -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
@@ -25,11 +24,11 @@
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
 
-    <PackageReference Include="Nerdbank.GitVersioning" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" />
-    <PackageReference Include="Roslynator.Analyzers" />
-    <PackageReference Include="Meziantou.Analyzer" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+    <PackageReference Include="Nerdbank.GitVersioning" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Concurrent" />

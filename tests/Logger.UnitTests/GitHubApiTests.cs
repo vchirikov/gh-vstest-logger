@@ -1,6 +1,7 @@
 // #define ALWAYS_FAIL
 
 namespace GitHub.VsTest.Logger.UnitTests;
+
 public class GitHubApiTests
 {
     [Fact]
@@ -12,7 +13,7 @@ public class GitHubApiTests
             _ => null
         });
 
-        var api = new GitHubApi(parameters, Mock.Of<IOutput>());
+        var api = new GitHubApi(parameters, Mock.Of<IOutput>(MockBehavior.Loose));
         var result = api.IsGitHubActions;
 
         Assert.True(result);
@@ -25,7 +26,7 @@ public class GitHubApiTests
             _ => null
         });
 
-        var api = new GitHubApi(parameters, Mock.Of<IOutput>());
+        var api = new GitHubApi(parameters, Mock.Of<IOutput>(MockBehavior.Loose));
         var result = api.IsGitHubActions;
 
         Assert.False(result);
@@ -35,7 +36,7 @@ public class GitHubApiTests
     [MemberData(nameof(WriteCommand_Input))]
     public void WriteCommand(GitHubWorkflowCommand cmd, string expected)
     {
-        var output = new Mock<IOutput>(){ CallBase = true, };
+        var output = new Mock<IOutput>(MockBehavior.Loose) { CallBase = true, };
         string result = "";
         output.Setup(x => x.Write(It.IsAny<string>())).Callback((string s) => result = s);
         var api = new GitHubApi(LoggerParameters.Create(), output.Object);
@@ -43,25 +44,24 @@ public class GitHubApiTests
         Assert.Equal(expected, result);
     }
 
-    public readonly static IEnumerable<object[]> WriteCommand_Input = new[]
-    {
-        new object[]{
+    public readonly static IEnumerable<object[]> WriteCommand_Input = new[] {
+        new object[] {
             new GitHubWorkflowCommand("workflow-command", "{command value}", new() {
-                {"parameter1", "{data}"},
-                {"parameter2", "{data}"},
+                { "parameter1", "{data}" },
+                { "parameter2", "{data}" },
             }),
             "::workflow-command parameter1={data},parameter2={data}::{command value}" + Environment.NewLine
         },
-        new object[]{
+        new object[] {
             new GitHubWorkflowCommand("echo", "off"),
             "::echo::off" + Environment.NewLine
         },
-        new object[]{
-            new GitHubWorkflowCommand("set-output", "multi\nline", new(){ ["name"] = "text" }),
+        new object[] {
+            new GitHubWorkflowCommand("set-output", "multi\nline", new() { ["name"] = "text" }),
             "::set-output name=text::multi%0Aline" + Environment.NewLine
         },
-        new object[]{
-            new GitHubWorkflowCommand("error", "foo", new(){ ["title"] = null }),
+        new object[] {
+            new GitHubWorkflowCommand("error", "foo", new() { ["title"] = null }),
             "::error::foo" + Environment.NewLine
         },
     };
@@ -72,5 +72,4 @@ public class GitHubApiTests
         Assert.True(false);
     }
 #endif
-
 }
